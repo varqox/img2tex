@@ -1,0 +1,3 @@
+[submodule "makefile-utils"]
+	path = makefile-utils
+	url = https://github.com/varqox/makefile-utils
