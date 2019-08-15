@@ -11,6 +11,7 @@ IMG2TEX_SRCS := \
 	src/commands.cc \
 	src/img2tex.cc \
 	src/symbol_img_utils.cc \
+	src/symbols_to_tex.cc \
 
 $(eval $(call load_dependencies, $(IMG2TEX_SRCS)))
 IMG2TEX_OBJS := $(call SRCS_TO_OBJS, $(IMG2TEX_SRCS))

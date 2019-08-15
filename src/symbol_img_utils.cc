@@ -85,3 +85,25 @@ Matrix<int> tex_to_img_matrix(const string& tex) {
 	Defer guard([&] { unlink(png_filename.data()); });
 	return teximg_to_matrix(png_filename.data());
 }
+
+Matrix<int> safe_tex_to_img_matrix(const std::string& tex) {
+	// Add integral symbol at the beginning and end to prevent cutting the edges
+	// of the @p tex
+	auto matrix = tex_to_img_matrix("\\int\\,\\, " + tex + " \\,\\,\\int");
+	// Now we have to cut out the integral symbols
+	std::vector<int> col_sum = column_sum(matrix);
+	auto beg = std::find(col_sum.begin(), col_sum.end(), 0);
+	if (beg == col_sum.end()) {
+		throw std::runtime_error(
+		   "safe_tex_to_img_matrix(): spacing equation does not work");
+	}
+
+	auto end = std::find(col_sum.rbegin(), col_sum.rend(), 0);
+	int first_empty_column = beg - col_sum.begin();
+	int last_empty_column = --end.base() - col_sum.begin();
+
+	return without_empty_borders(
+	          SubmatrixView(matrix, 0, first_empty_column, matrix.rows(),
+	                        last_empty_column - first_empty_column))
+	   .to_matrix();
+}

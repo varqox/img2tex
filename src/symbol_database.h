@@ -380,7 +380,7 @@ public:
 				try {
 					for (;;) {
 						auto tex = job_queue.get_job();
-						auto matrix = tex_to_img_matrix(tex);
+						auto matrix = safe_tex_to_img_matrix(tex);
 						std::lock_guard<std::mutex> guard(symbols_mutex);
 						add_symbol(matrix, tex);
 					}

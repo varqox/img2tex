@@ -1,5 +1,6 @@
 #include "commands.h"
 #include "symbol_database.h"
+#include "symbols_to_tex.h"
 
 #include <filesystem>
 #include <unistd.h>
@@ -137,13 +138,13 @@ int untex_command(int argc, char** argv) {
 	if (access(MANUAL_SYMBOLS_DB_FILE, F_OK) == 0)
 		sdb.add_from_file(MANUAL_SYMBOLS_DB_FILE);
 
-	if constexpr (debug) {
+	if constexpr (debug and false) {
 		for (auto const& [symbol, tex] : sdb.symbols()) {
 			cerr << tex << '\n';
 			binshow_matrix(symbol);
 		}
 
-		sdb.statistics().print();
+		// sdb.statistics().print();
 	}
 
 	auto img = teximg_to_matrix(png_file);
@@ -184,7 +185,7 @@ int untex_command(int argc, char** argv) {
 
 	vector<DpState> dp(n);
 	deque<BestMatch> best_match;
-	for (int i = 0; i < n; ++i) {
+	for (int pos = 0; pos < n; ++pos) {
 		best_match.emplace_front();
 		if (best_match.size() > symbol_groups.size())
 			best_match.pop_back();
@@ -192,46 +193,49 @@ int untex_command(int argc, char** argv) {
 		auto& [best_diff, best_match_group, best_match_tex] =
 		   best_match.front();
 
-		cerr << "\nSYMBOL No. " << i << ":\n";
+		cerr << "\nSYMBOL No. " << pos << ":\n";
 
-		// Try to match as k-th symbol group (k in descending order)
-		for (int k = min(i, (int)symbol_groups.size() - 1); k >= 0; --k) {
-			if (i > k and not dp[i - k - 1].possible)
+		// Try to match as gr-th symbol group (gr in increasing order)
+		for (int gr = 0; gr < min(pos + 1, (int)symbol_groups.size()); ++gr) {
+			if (pos > gr and not dp[pos - gr - 1].possible)
 				continue;
 
-			best_diff = 1e9;
-			best_match_group = k; // In case there are no sdb.symbols()
-			best_match_tex = "";
+			auto const& curr_symbol = symbol_groups[gr][pos - gr];
 
-			auto const& curr_symbol = symbol_groups[k][i - k];
+			best_diff = 1e9;
+			best_match_group = gr; // In case there are no sdb.symbols()
+			best_match_tex = "";
+			Matrix<int> best_symbol(0, 0);
+
 			for (auto const& [symbol, tex] : sdb.symbols()) {
 				double diff = sdb.statistics().img_diff(curr_symbol, symbol);
 				if (diff < best_diff) {
 					best_diff = diff;
 					best_match_tex = tex;
+					best_symbol = symbol;
 				}
 			}
 
 			if (best_diff <= MATCH_THRESHOLD) {
-				cerr << "\033[1;32mMatched as group " << k << ":\033[m "
+				cerr << "\033[1;32mMatched as group " << gr << ":\033[m "
 				     << best_match_tex << " with diff: " << setprecision(6)
 				     << fixed << best_diff << '\n';
-				dp[i] = {true, best_match_group, best_match_tex};
-				sdb.add_symbol_and_append_file(curr_symbol, best_match_tex,
-				                               GENERATED_SYMBOLS_DB_FILE);
+				binshow_matrix(curr_symbol);
+				binshow_matrix(best_symbol);
+				dp[pos] = {true, best_match_group, best_match_tex};
 			} else if constexpr (debug) {
-				cerr << "\033[33mBest match as group " << k << ":\033[m "
+				cerr << "\033[33mBest match as group " << gr << ":\033[m "
 				     << best_match_tex << " with diff: " << setprecision(6)
 				     << fixed << best_diff << '\n';
 			}
 		}
 
 		auto all_prev_k_failed = [&] {
-			int beg = i - (int)symbol_groups.size() + 1;
+			int beg = pos - (int)symbol_groups.size() + 1;
 			if (beg < 0)
 				return false; // A longer symbol may match later
 
-			for (int j = beg; j < i; ++j)
+			for (int j = beg; j < pos; ++j)
 				if (dp[j].possible)
 					return false;
 
@@ -239,26 +243,52 @@ int untex_command(int argc, char** argv) {
 		};
 
 		// Cannot match
-		if (not dp[i].possible and (i == n - 1 or all_prev_k_failed())) {
+		if (not dp[pos].possible and (pos == n - 1 or all_prev_k_failed())) {
 			if constexpr (debug)
 				cerr << endl;
 
-			cerr << "\033[1;31mCannot match any of the candidates:\033[m\n";
-			for (int k = 0; k < min(i + 1, (int)symbol_groups.size()); ++k) {
-				// TODO: crashes here if i == n - 1 and i is too small
-				auto const& symbol =
-				   symbol_groups[k][i - ((int)symbol_groups.size() - 1)];
-				auto fsym_file = failed_symbol_file(k);
-				ofstream(fsym_file) << SymbolDatabase::symbol_to_text(symbol);
-				cerr << "Candidate from group " << k << " (saved to "
-				     << fsym_file << "):\n";
-				binshow_matrix(symbol);
+			// Find longest matched prefix end
+			int longest_matched_prefix_end = 0;
+			for (int i = pos; i > 0; --i) {
+				if (dp[i].possible) {
+					longest_matched_prefix_end = i;
+					break;
+				}
+			}
 
-				auto const& bm = best_match[(int)symbol_groups.size() - k - 1];
-				assert(bm.best_match_group == k);
-				cerr << "best match (" << setprecision(6) << fixed
-				     << bm.best_match_diff << ") is: " << bm.best_match_tex
-				     << '\n';
+			int next_candidate_no = 0;
+			cerr << "\033[1;31mCannot match any of the candidates:\033[m\n";
+			for (int gr = 0; gr < min(pos + 1, (int)symbol_groups.size());
+			     ++gr) {
+				// Find all rightmost unmatched symbol candidates:
+				// E.g. with symbol_groups.size() == 3
+				// longest_matched_prefix_end v
+				//                    __  __  __ | __  __  __
+				// Candidate 1:                    ^--------^
+				// Candidate 2:               ^---------^
+				// Candidate 3:           ^---------^
+
+				for (int cand_pos = longest_matched_prefix_end + 1;
+				     cand_pos >= max(0, longest_matched_prefix_end - gr + 1);
+				     --cand_pos) {
+					if (cand_pos > 0 and not dp[cand_pos - 1].possible)
+						continue;
+
+					auto const& symbol = symbol_groups[gr][cand_pos];
+					auto fsym_file = failed_symbol_file(next_candidate_no++);
+					ofstream(fsym_file)
+					   << SymbolDatabase::symbol_to_text(symbol);
+					cerr << "Candidate from group " << gr << " (saved to "
+					     << fsym_file << "):\n";
+					binshow_matrix(symbol);
+
+					// auto const& bm = best_match[(int)symbol_groups.size() -
+					// gr - 1]; assert(bm.best_match_group == gr); cerr << "best
+					// match (" << setprecision(6) << fixed
+					//      << bm.best_match_diff << ") is: " <<
+					//      bm.best_match_tex
+					//      << '\n';
+				}
 			}
 
 			return 1;
@@ -266,18 +296,24 @@ int untex_command(int argc, char** argv) {
 	}
 
 	// Mark only used symbols
-	int k = n - 1;
-	while (k > 0) {
-		int gr = dp[k].symbol_group;
+	int pos = n - 1;
+	while (pos > 0) {
+		int gr = dp[pos].symbol_group;
 		for (int i = 1; i <= gr; ++i)
-			dp[k - i].possible = false;
+			dp[pos - i].possible = false;
 
-		k -= gr + 1;
+		// Save best matched symbols to the database
+		// sdb.add_symbol_and_append_file(symbol_groups[gr][pos - gr],
+		// dp[pos].last_symbol, GENERATED_SYMBOLS_DB_FILE);
+
+		pos -= gr + 1;
 	}
 
+	vector<string> decoded_symbols;
 	for (int i = 0; i < n; ++i)
 		if (dp[i].possible)
-			cout << dp[i].last_symbol << " \n"[i + 1 == n];
+			decoded_symbols.emplace_back(dp[i].last_symbol);
 
+	cout << symbols_to_tex(decoded_symbols) << '\n';
 	return 0;
 }
