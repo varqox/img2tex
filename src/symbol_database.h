@@ -1,15 +1,31 @@
 #pragma once
 
 #include "job_queue.h"
+#include "string.h"
 #include "symbol_img_utils.h"
 #include "symbol_statistics.h"
 
 #include <fstream>
 #include <thread>
 
+enum class SymbolKind {
+	INDEX, // upper or lower index like {}_x or {}^x
+	OTHER
+};
+
+struct Symbol {
+	static constexpr const char INDEX_PREFIX[] = "{}_";
+
+	Matrix<int> img;
+	std::string tex;
+	SymbolKind kind;
+
+	Symbol(Matrix<int> i, std::string t, SymbolKind k)
+	   : img(std::move(i)), tex(std::move(t)), kind(k) {}
+};
+
 class SymbolDatabase {
-	std::vector<std::pair<Matrix<int>, std::string>>
-	   symbols_; // (symbol, tex formula)
+	std::vector<Symbol> symbols_; // (symbol, tex formula)
 	SymbolStatistics stats_;
 
 	static void write_symbol(std::ofstream& file, const Matrix<int>& symbol,
@@ -39,8 +55,14 @@ class SymbolDatabase {
 		file << '\n';
 	}
 
-	static std::pair<Matrix<int>, std::string>
-	read_symbol(std::ifstream& file) {
+	static SymbolKind tex_to_symbol_kind(const std::string& tex) noexcept {
+		if (has_prefix(tex, Symbol::INDEX_PREFIX))
+			return SymbolKind::INDEX;
+
+		return SymbolKind::OTHER;
+	}
+
+	static Symbol read_symbol(std::ifstream& file) {
 		int k;
 		file >> k;
 		if (file.get() != ' ')
@@ -74,7 +96,7 @@ class SymbolDatabase {
 			}
 		}
 
-		return {mat, tex};
+		return {mat, tex, tex_to_symbol_kind(tex)};
 	}
 
 	void update_statistics(const Matrix<int>& symbol) {
@@ -84,7 +106,8 @@ class SymbolDatabase {
 	}
 
 	void add_symbol(const Matrix<int>& symbol, const std::string& tex_formula) {
-		symbols_.emplace_back(symbol, tex_formula);
+		symbols_.emplace_back(symbol, tex_formula,
+		                      tex_to_symbol_kind(tex_formula));
 		update_statistics(symbol);
 	}
 
@@ -101,15 +124,15 @@ public:
 		while (file.get(), file) {
 			file.unget();
 			symbols_.emplace_back(read_symbol(file));
-			update_statistics(symbols_.back().first);
+			update_statistics(symbols_.back().img);
 			file.get(); // '\n'
 		}
 	}
 
 	void save_to_file(const std::string& filename) const {
 		std::ofstream file(filename, std::ios::binary);
-		for (auto const& [symbol, tex] : symbols_)
-			write_symbol(file, symbol, tex);
+		for (auto const& symbol : symbols_)
+			write_symbol(file, symbol.img, symbol.tex);
 	}
 
 	const SymbolStatistics& statistics() const noexcept { return stats_; }
@@ -119,8 +142,8 @@ public:
 	void add_symbol_and_append_file(const Matrix<int>& symbol,
 	                                const std::string& tex_formula,
 	                                const std::string& filename) {
-		for (auto const& [sym, tex] : symbols_)
-			if (sym == symbol)
+		for (auto const& sym : symbols_)
+			if (sym.img == symbol)
 				return;
 
 		std::ofstream file(filename, std::ios::binary | std::ios::app);
@@ -128,7 +151,7 @@ public:
 		write_symbol(file, symbol, tex_formula);
 	}
 
-	static Matrix<int> text_to_symbol(std::string text) {
+	static Matrix<int> text_img_to_symbol(std::string text) {
 		if (not text.empty() and text.back() == '\n')
 			text.pop_back();
 
@@ -160,7 +183,7 @@ public:
 		return res;
 	}
 
-	static std::string symbol_to_text(const Matrix<int>& symbol) {
+	static std::string symbol_to_text_img(const Matrix<int>& symbol) {
 		std::string res;
 		for (int i = 0; i < symbol.rows(); ++i) {
 			for (int j = 0; j < symbol.cols(); ++j)
@@ -173,7 +196,10 @@ public:
 
 private:
 	static void generate_tex_symbols(JobQueue<std::string>& job_queue) {
-		const std::vector<std::string> greek_letters = {
+		using std::string;
+		using std::vector;
+
+		const vector<string> greek_letters = {
 		   "\\alpha",   "\\nu",      "\\beta",    "\\Xi",         "\\xi",
 		   "\\Gamma",   "\\gamma",   "\\Delta",   "\\delta",      "\\Pi",
 		   "\\pi",      "\\varpi",   "\\epsilon", "\\varepsilon", "\\rho",
@@ -183,18 +209,18 @@ private:
 		   "\\varphi",  "\\kappa",   "\\chi",     "\\Lambda",     "\\lambda",
 		   "\\Psi",     "\\psi",     "\\mu",      "\\Omega",      "\\omega"};
 
-		const std::vector<std::string> small_latin = {
+		const vector<string> small_latin = {
 		   "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m",
 		   "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z"};
 
-		const std::vector<std::string> big_latin = {
+		const vector<string> big_latin = {
 		   "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M",
 		   "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"};
 
-		const std::vector<std::string> digits = {"0", "1", "2", "3", "4",
-		                                         "5", "6", "7", "8", "9"};
+		const vector<string> digits = {"0", "1", "2", "3", "4",
+		                               "5", "6", "7", "8", "9"};
 
-		const std::vector<std::string> operators = {
+		const vector<string> operators = {
 		   "+", "-", "\\neg", "!", "\\#", ">", "<",
 		   // "=",
 		   "\\%", "\\doteq", "\\equiv", "\\approx", "\\cong", "\\simeq",
@@ -226,14 +252,14 @@ private:
 		   "\\sqsubseteq", "\\sqsupseteq", "\\|", "\\parallel",
 		   // "\\nparallel",
 		   "\\asymp", "\\bowtie", "\\vdash", "\\dashv", "\\in", "\\ni",
-		   "\\smile", "\\frown", "\\models", "\\notin", "\\perp", "\\mid",
+		   "\\smile", "\\frown", "\\models", "\\notin", "\\perp",
+		   // "\\mid",
 		   "\\pm", "\\cap", "\\diamond", "\\oplus", "\\mp", "\\cup",
 		   "\\bigtriangleup", "\\ominus", "\\times", "\\uplus",
 		   "\\bigtriangledown", "\\otimes", "\\div", "\\sqcap",
 		   "\\triangleleft", "\\oslash", "\\ast", "\\sqcup", "\\triangleright",
 		   "\\odot", "\\star", "\\vee", "\\bigcirc", "\\circ", "\\dagger",
-		   "\\wedge", "\\bullet", "\\setminus", "\\ddagger", "\\cdot", "\\wr",
-		   "\\amalg",
+		   "\\wedge", "\\bullet", "\\setminus", "\\ddagger", "\\wr", "\\amalg",
 		   // "\\nleqq",
 		   // "\\ngeqq",
 		   // "\\lneq",
@@ -321,39 +347,39 @@ private:
 
 		for (auto const* vec :
 		     {&greek_letters, &small_latin, &big_latin, &digits, &operators})
-			for (std::string const& symbol : *vec)
+			for (string const& symbol : *vec)
 				job_queue.add_job(symbol);
 
 		for (auto const* vec : {&greek_letters, &small_latin, &big_latin})
-			for (std::string const& symbol : *vec)
+			for (string const& symbol : *vec)
 				job_queue.add_job(symbol + "'");
 
-		// for (std::string const& letter : big_latin)
+		// for (string const& letter : big_latin)
 		// job_queue.add_job("\\mathbb{" + letter + "}");
 
 		for (auto const* vec : {&small_latin, &big_latin})
-			for (std::string const& letter : *vec)
+			for (string const& letter : *vec)
 				job_queue.add_job("\\mathrm{" + letter + "}");
 
-		for (std::string const& d1 : digits) {
-			for (std::string const& d2 : digits) {
+		for (string const& d1 : digits)
+			for (string const& d2 : digits)
 				job_queue.add_job(d1 + "^" + d2);
-				for (std::string const& d3 : digits)
-					job_queue.add_job(d1 + "^{" + d2 + d3 + "}");
-			}
-		}
 
-		for (std::string const& letter : small_latin)
-			for (std::string const& digit : digits)
+		for (string const& letter : small_latin)
+			for (string const& digit : digits)
 				job_queue.add_job(letter + "_" + digit);
 
-		// for (auto const* vec :
-		//      {&greek_letters, &small_latin, &big_latin, &digits}) {
-		// 	for (std::string const& letter : *vec) {
-		// 		job_queue.add_job("{}_" + letter);
-		// 		job_queue.add_job("{}^" + letter);
-		// 	}
-		// }
+		auto brace_for_index = [](const string& tex) {
+			return (tex.size() == 1 ? tex : "{" + tex + "}");
+		};
+
+		for (auto const* vec :
+		     {&small_latin, &big_latin, &digits, &operators, &greek_letters}) {
+			for (string const& symbol : *vec) {
+				job_queue.add_job(Symbol::INDEX_PREFIX +
+				                  brace_for_index(symbol));
+			}
+		}
 	}
 
 public:
@@ -361,15 +387,19 @@ public:
 		symbols_.clear();
 		stats_.reset();
 
-		add_symbol(text_to_symbol("########\n"
-		                          "        \n"
-		                          "########\n"),
+		add_symbol(text_img_to_symbol("########\n"
+		                              "        \n"
+		                              "########\n"),
 		           "=");
 
-		add_symbol(text_to_symbol("############\n"
-		                          "            \n"
-		                          "############\n"),
+		add_symbol(text_img_to_symbol("############\n"
+		                              "            \n"
+		                              "############\n"),
 		           "=");
+
+		add_symbol(text_img_to_symbol("##\n"
+		                              "##\n"),
+		           "\\cdot");
 
 		JobQueue<std::string> job_queue(1000);
 		std::vector<std::thread> threads(std::thread::hardware_concurrency());

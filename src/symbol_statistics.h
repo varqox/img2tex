@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <iostream>
 
 class SymbolStatistics {
@@ -126,14 +127,19 @@ public:
 			binshow_matrix(fir);
 		}
 
+		int first_filled_pixels = std::count(first.begin(), first.end(), 1);
+		int second_filled_pixels = std::count(second.begin(), second.end(), 1);
+
 		auto hard_img_diff_with_offset =
 		   [&, diff = Matrix<double>(fir.rows(), fir.cols()),
+		    diff_orig = Matrix<double>(fir.rows(), fir.cols()),
 		    differ = Matrix<char>(fir.rows(), fir.cols())](int dr,
 		                                                   int dc) mutable {
 			   dr += MAX_OFFSET;
 			   dc += MAX_OFFSET;
 
 			   diff.fill(0);
+			   diff_orig.fill(0);
 			   differ.fill(0);
 			   for (int i = 0; i < diff.rows(); ++i) {
 				   for (int j = 0; j < diff.cols(); ++j) {
@@ -143,19 +149,22 @@ public:
 					                          sj < 0 or sj >= second.cols()
 					                       ? 0
 					                       : second[si][sj]);
+
 					   if (fir[i][j] == second_ij)
 						   continue; // No difference
 
+					   differ[i][j] = 1;
 					   double x =
 					      prob_pxiel(fir, i, j) - prob_pxiel(second, si, sj);
-					   diff[i][j] = x;
-					   differ[i][j] = 1;
+					   diff_orig[i][j] = x;
 				   }
 			   }
 
 			   for (int i = 0; i < diff.rows(); ++i)
 				   for (int j = 0; j < diff.cols(); ++j)
-					   diff[i][j] = sqr(diff[i][j] * sum3x3(differ, i, j));
+					   if (differ[i][j])
+						   diff[i][j] = std::abs((sum3x3(diff_orig, i, j)));
+			   // diff[i][j] = sqr((sum3x3(diff_orig, i, j)));
 
 			   // std::cerr << setprecision(6) << fixed << cum_diff / (cols *
 			   // rows)
@@ -163,7 +172,7 @@ public:
 
 			   if constexpr (debug) {
 				   std::cerr << "dr: " << dr << " dc: " << dc << '\n';
-
+				   binshow_matrix(differ);
 				   binshow_matrix(diff * 100);
 				   show_matrix(diff);
 			   }
@@ -220,6 +229,9 @@ public:
 			   double simple = 0;
 			   for (double x : diff)
 				   simple += x;
+
+			   // double mfill = std::min(first_filled_pixels,
+			   // second_filled_pixels) + 1; simple *= 1 + 40 / mfill;
 
 			   if constexpr (debug) {
 				   // std::cerr << "fir_diff: " << fir_diff << std::endl;

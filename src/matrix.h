@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cassert>
 #include <vector>
 
 template <class T = int>
@@ -252,6 +253,87 @@ public:
 
 	const U* operator[](int i) const noexcept {
 		return mat_[beg_row_ + i] + beg_col_;
+	}
+
+	template <class Type>
+	class Iterator {
+	public:
+		using iterator_category = std::bidirectional_iterator_tag;
+		using value_type = Type;
+		using difference_type = int;
+		using pointer = value_type*;
+		using reference = value_type&;
+
+	private:
+		using SubmatrixViewPtr =
+		   std::conditional_t<std::is_const_v<Type>, const SubmatrixView*,
+		                      SubmatrixView*>;
+		SubmatrixViewPtr sv = nullptr;
+		int row = 0, col = 0;
+
+		Iterator(SubmatrixViewPtr s, int r, int c) : sv(s), row(r), col(c) {}
+
+		friend class SubmatrixView;
+
+	public:
+		Iterator() = default;
+
+		reference operator*() const noexcept { return (*sv)[row][col]; }
+
+		pointer operator->() const noexcept { return &(*sv)[row][col]; }
+
+		Iterator& operator++() noexcept {
+			if (++col == sv->cols()) {
+				++row;
+				col = 0;
+			}
+
+			return *this;
+		}
+
+		Iterator operator++(int) noexcept {
+			Iterator it = *this;
+			++*this;
+			return it;
+		}
+
+		Iterator& operator--() noexcept {
+			if (col == 0) {
+				--row;
+				col = sv->cols() - 1;
+			} else {
+				--col;
+			}
+
+			return *this;
+		}
+
+		Iterator operator--(int) noexcept {
+			Iterator it = *this;
+			--*this;
+			return it;
+		}
+
+		friend bool operator==(Iterator a, Iterator b) noexcept {
+			return (a.sv == b.sv and a.row == b.row and a.col == b.col);
+		}
+
+		friend bool operator!=(Iterator a, Iterator b) noexcept {
+			return not(a == b);
+		}
+	};
+
+	using iterator = Iterator<T>;
+	using const_iterator = Iterator<const T>;
+
+	iterator begin() noexcept { return iterator(this, 0, 0); }
+
+	const_iterator begin() const noexcept { return const_iterator(this, 0, 0); }
+
+	iterator end() noexcept { return iterator(this, rows(), 0); }
+
+	const_iterator end() const noexcept {
+		return const_iterator(this, rows(), 0);
 	}
 };
 

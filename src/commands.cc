@@ -18,6 +18,7 @@ using std::ofstream;
 using std::setprecision;
 using std::string;
 using std::vector;
+using std::optional;
 
 constexpr const char* GENERATED_SYMBOLS_DB_FILE = "generated_symbols.db";
 constexpr const char* MANUAL_SYMBOLS_DB_FILE = "manual_symbols.db";
@@ -88,7 +89,7 @@ int learn_command(int argc, char** argv) {
 	SymbolDatabase sdb;
 	if (access(MANUAL_SYMBOLS_DB_FILE, F_OK) == 0)
 		sdb.add_from_file(MANUAL_SYMBOLS_DB_FILE);
-	sdb.add_symbol_and_append_file(SymbolDatabase::text_to_symbol(symbol), tex,
+	sdb.add_symbol_and_append_file(SymbolDatabase::text_img_to_symbol(symbol), tex,
 	                               MANUAL_SYMBOLS_DB_FILE);
 
 	return 0;
@@ -139,9 +140,9 @@ int untex_command(int argc, char** argv) {
 		sdb.add_from_file(MANUAL_SYMBOLS_DB_FILE);
 
 	if constexpr (debug and false) {
-		for (auto const& [symbol, tex] : sdb.symbols()) {
-			cerr << tex << '\n';
-			binshow_matrix(symbol);
+		for (auto const& symbol : sdb.symbols()) {
+			cerr << symbol.tex << '\n';
+			binshow_matrix(symbol.img);
 		}
 
 		// sdb.statistics().print();
@@ -161,14 +162,15 @@ int untex_command(int argc, char** argv) {
 		for (size_t i = 0; i < symbol_groups.size(); ++i) {
 			cerr << "symbol_groups[" << i << "]:\n";
 			for (auto&& symbol : symbol_groups[i])
-				binshow_matrix(symbol);
+				binshow_matrix(symbol.img);
 		}
 	}
 
-	constexpr double MATCH_THRESHOLD = 10;
+	constexpr double MATCH_THRESHOLD = 3.6;
 
 	struct DpState {
 		bool possible = false;
+		double best_cum_diff = std::numeric_limits<double>::max();
 		int symbol_group;
 		string last_symbol;
 	};
@@ -177,21 +179,21 @@ int untex_command(int argc, char** argv) {
 	if (n == 0)
 		return 0; // Nothing is in the image
 
-	struct BestMatch {
-		double best_match_diff = 1e9;
-		int best_match_group = -1;
-		string best_match_tex;
-	};
+	// struct BestMatch {
+	// 	double best_match_diff = 1e9;
+	// 	int best_match_group = -1;
+	// 	string best_match_tex;
+	// };
 
 	vector<DpState> dp(n);
-	deque<BestMatch> best_match;
+	// deque<BestMatch> best_match;
 	for (int pos = 0; pos < n; ++pos) {
-		best_match.emplace_front();
-		if (best_match.size() > symbol_groups.size())
-			best_match.pop_back();
+		// best_match.emplace_front();
+		// if (best_match.size() > symbol_groups.size())
+			// best_match.pop_back();
 
-		auto& [best_diff, best_match_group, best_match_tex] =
-		   best_match.front();
+		// auto& [best_diff, best_match_group, best_match_tex] =
+		   // best_match.front();
 
 		cerr << "\nSYMBOL No. " << pos << ":\n";
 
@@ -202,27 +204,81 @@ int untex_command(int argc, char** argv) {
 
 			auto const& curr_symbol = symbol_groups[gr][pos - gr];
 
-			best_diff = 1e9;
-			best_match_group = gr; // In case there are no sdb.symbols()
-			best_match_tex = "";
-			Matrix<int> best_symbol(0, 0);
+			double best_diff = 1e9;
+			int best_match_group = gr; // In case there are no sdb.symbols()
+			optional<Symbol> best_symbol;
 
-			for (auto const& [symbol, tex] : sdb.symbols()) {
-				double diff = sdb.statistics().img_diff(curr_symbol, symbol);
-				if (diff < best_diff) {
-					best_diff = diff;
-					best_match_tex = tex;
-					best_symbol = symbol;
-				}
+			bool skip_index, skip_non_index;
+			{
+				int top = curr_symbol.top_rows_cut;
+				int bottom = curr_symbol.bottom_rows_cut;
+				int symbol_height = curr_symbol.img.rows();
+				int full_height = top + symbol_height + bottom;
+				int bigger = max(top, bottom);
+				skip_non_index = (bigger > full_height * 0.58);
+				skip_index = (not skip_non_index and symbol_height < 4);
+				// if (symbol_height == 1) {
+				// 	cerr << " >>>>>> " << top << ' ' << bottom << ' ' << full_height << '\n';
+				// }
 			}
+
+			for (;;) {
+				for (auto const& symbol : sdb.symbols()) {
+					if (skip_non_index and symbol.kind != SymbolKind::INDEX)
+						continue;
+
+					if (skip_index and symbol.kind == SymbolKind::INDEX)
+						continue;
+
+					double diff = sdb.statistics().img_diff(curr_symbol.img, symbol.img);
+					if (diff < best_diff) {
+						best_diff = diff;
+						best_symbol = symbol;
+					}
+				}
+
+				if (best_diff > MATCH_THRESHOLD and skip_non_index) {
+					skip_non_index = false;
+					skip_index = true;
+					continue;
+				}
+
+				break;
+			}
+
+			auto match_to_tex = [&]() -> string {
+				if (not best_symbol.has_value())
+					return "";
+
+				auto& best_symbol_val = best_symbol.value();
+				switch (best_symbol_val.kind) {
+				case SymbolKind::INDEX: {
+					constexpr int prefix_len = std::char_traits<char>::length(Symbol::INDEX_PREFIX);
+					if (curr_symbol.top_rows_cut < curr_symbol.bottom_rows_cut)
+						return "{}^" + best_symbol_val.tex.substr(prefix_len);
+
+					return "{}_" + best_symbol_val.tex.substr(prefix_len);
+
+				}
+				case SymbolKind::OTHER: return best_symbol_val.tex;
+				}
+
+				return "";
+			};
+
+			string best_match_tex = match_to_tex();
 
 			if (best_diff <= MATCH_THRESHOLD) {
 				cerr << "\033[1;32mMatched as group " << gr << ":\033[m "
 				     << best_match_tex << " with diff: " << setprecision(6)
 				     << fixed << best_diff << '\n';
-				binshow_matrix(curr_symbol);
-				binshow_matrix(best_symbol);
-				dp[pos] = {true, best_match_group, best_match_tex};
+				binshow_matrix(curr_symbol.img);
+				binshow_matrix(best_symbol.value().img);
+
+				double curr_cum_diff = (pos == gr ? 0 : dp[pos - gr - 1].best_cum_diff) + best_diff;
+				if (curr_cum_diff <= dp[pos].best_cum_diff) {
+					dp[pos] = {true, curr_cum_diff, best_match_group, best_match_tex};
+				}
 			} else if constexpr (debug) {
 				cerr << "\033[33mBest match as group " << gr << ":\033[m "
 				     << best_match_tex << " with diff: " << setprecision(6)
@@ -277,10 +333,10 @@ int untex_command(int argc, char** argv) {
 					auto const& symbol = symbol_groups[gr][cand_pos];
 					auto fsym_file = failed_symbol_file(next_candidate_no++);
 					ofstream(fsym_file)
-					   << SymbolDatabase::symbol_to_text(symbol);
+					   << SymbolDatabase::symbol_to_text_img(symbol.img);
 					cerr << "Candidate from group " << gr << " (saved to "
 					     << fsym_file << "):\n";
-					binshow_matrix(symbol);
+					binshow_matrix(symbol.img);
 
 					// auto const& bm = best_match[(int)symbol_groups.size() -
 					// gr - 1]; assert(bm.best_match_group == gr); cerr << "best
@@ -314,6 +370,16 @@ int untex_command(int argc, char** argv) {
 		if (dp[i].possible)
 			decoded_symbols.emplace_back(dp[i].last_symbol);
 
+	if (decoded_symbols.back() == "\\cdot")
+		decoded_symbols.back() = ".";
+
 	cout << symbols_to_tex(decoded_symbols) << '\n';
 	return 0;
 }
+
+// TODO: automatic spacing between symbols
+// TODO: merging bottom indexes together
+// TODO: merging top indexes together
+// TODO: merging \mathrm{} together
+// TODO: add indexing symbols to make lookup fast
+// TODO: speedup diff by stopping when the diff is already too big

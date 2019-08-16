@@ -20,7 +20,13 @@ Matrix<T> teximg_to_matrix(const char* img_path) {
 	return res;
 }
 
-SubmatrixView<int> without_empty_borders(const SubmatrixView<int>& mat);
+struct WithoutBordersRes {
+	SubmatrixView<int> symbol;
+	int top_rows_cut;
+	int bottom_rows_cut;
+};
+
+WithoutBordersRes without_empty_borders(const SubmatrixView<int>& mat);
 
 inline std::vector<int> column_sum(const Matrix<int>& mat) {
 	std::vector<int> col_sum(mat.cols());
@@ -31,14 +37,20 @@ inline std::vector<int> column_sum(const Matrix<int>& mat) {
 	return col_sum;
 }
 
+struct SplitSymbol {
+	Matrix<int> img;
+	int top_rows_cut;
+	int bottom_rows_cut;
+};
+
 // Returns [{symbols grouped by 1}, ..., {symbols grouped by N}]
 template <size_t N>
-std::array<std::vector<Matrix<int>>, N>
+std::array<std::vector<SplitSymbol>, N>
 split_into_symbol_groups(const Matrix<int>& mat) {
 	std::vector<int> col_sum = column_sum(mat);
 	col_sum.emplace_back(0); // Guard
 
-	std::array<std::vector<Matrix<int>>, N> symbol_groups;
+	std::array<std::vector<SplitSymbol>, N> symbol_groups;
 	std::array<int, N> symbols_beg {{}};
 	for (int i = 0; i <= mat.cols(); ++i) {
 		// Skip non-empty columns
@@ -54,19 +66,19 @@ split_into_symbol_groups(const Matrix<int>& mat) {
 		// Add new symbol groups
 		for (int k = N - 1; k > 0; --k) {
 			if (symbols_beg[k] != symbols_beg[k - 1]) {
-				symbol_groups[k].emplace_back(
-				   without_empty_borders(SubmatrixView(mat, 0, symbols_beg[k],
-				                                       mat.rows(),
-				                                       i - symbols_beg[k]))
-				      .to_matrix());
+				auto res = without_empty_borders(SubmatrixView(
+				   mat, 0, symbols_beg[k], mat.rows(), i - symbols_beg[k]));
+				symbol_groups[k].push_back({res.symbol.to_matrix(),
+				                            res.top_rows_cut,
+				                            res.bottom_rows_cut});
 				symbols_beg[k] = symbols_beg[k - 1];
 			}
 		}
 
-		symbol_groups[0].emplace_back(
-		   without_empty_borders(SubmatrixView(mat, 0, symbols_beg[0],
-		                                       mat.rows(), i - symbols_beg[0]))
-		      .to_matrix());
+		auto res = without_empty_borders(SubmatrixView(
+		   mat, 0, symbols_beg[0], mat.rows(), i - symbols_beg[0]));
+		symbol_groups[0].push_back(
+		   {res.symbol.to_matrix(), res.top_rows_cut, res.bottom_rows_cut});
 
 		symbols_beg[0] = i + 1;
 	}

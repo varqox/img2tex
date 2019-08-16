@@ -34,8 +34,9 @@ void unique_files_from_full_main_to_main(const string& src_dir,
 		dest_dir += '/';
 
 	auto cmp = [](const Matrix<int>& a, const Matrix<int>& b) {
-		return pair(a.rows() * a.cols(), SymbolDatabase::symbol_to_text(a)) <
-		       pair(b.rows() * b.cols(), SymbolDatabase::symbol_to_text(b));
+		return pair(a.rows() * a.cols(),
+		            SymbolDatabase::symbol_to_text_img(a)) <
+		       pair(b.rows() * b.cols(), SymbolDatabase::symbol_to_text_img(b));
 	};
 
 	map<Matrix<int>, string, decltype(cmp)> images(std::move(cmp));
