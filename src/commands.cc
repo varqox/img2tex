@@ -248,8 +248,8 @@ int untex_command(int argc, char** argv) {
 				cerr << endl;
 
 			// Find longest matched prefix end
-			int longest_matched_prefix_end = 0;
-			for (int i = pos; i > 0; --i) {
+			int longest_matched_prefix_end = -1;
+			for (int i = pos; i >= 0; --i) {
 				if (dp[i].possible) {
 					longest_matched_prefix_end = i;
 					break;
@@ -268,7 +268,7 @@ int untex_command(int argc, char** argv) {
 				// Candidate 2:               ^---------^
 				// Candidate 3:           ^---------^
 
-				for (int cand_pos = longest_matched_prefix_end + 1;
+				for (int cand_pos = std::min(longest_matched_prefix_end + 1, n - 1 - gr);
 				     cand_pos >= max(0, longest_matched_prefix_end - gr + 1);
 				     --cand_pos) {
 					if (cand_pos > 0 and not dp[cand_pos - 1].possible)
