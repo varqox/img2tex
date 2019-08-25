@@ -20,6 +20,20 @@ Matrix<T> teximg_to_matrix(const char* img_path) {
 	return res;
 }
 
+template <class T = int>
+void save_binary_image_to(const Matrix<T>& img, const char* img_path) {
+	cv::Mat out(img.rows(), img.cols(), CV_32FC4);
+	for (int i = 0; i < img.rows(); ++i) {
+		for (int j = 0; j < img.cols(); ++j) {
+			float x = (1 - img[i][j]) * 255.;
+			float alpha = img[i][j] * 255.;
+			out.at<cv::Vec4f>(i, j) = {x, x, x, alpha};
+		}
+	}
+
+	cv::imwrite(img_path, out);
+}
+
 struct WithoutBordersRes {
 	SubmatrixView<int> symbol;
 	int top_rows_cut;

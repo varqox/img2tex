@@ -40,10 +40,9 @@ WithoutBordersRes without_empty_borders(const SubmatrixView<int>& mat) {
 // Returns path of the png_file
 string tex_to_png_file(const string& tex, bool quiet) {
 	TemporaryFile tex_file("/tmp/texXXXXXX");
-	std::ofstream(tex_file.path()) << "\\documentclass[12pt]{article}\n"
+	std::ofstream(tex_file.path()) << "\\documentclass[12pt,polish]{article}\n"
 	                                  "\\pagestyle{empty}\n"
-	                                  // "\\usepackage{amsmath}\n"
-	                                  // "\\usepackage{amssymb}\n"
+	                                  "\\usepackage{mathtools}\n"
 	                                  "\\begin{document}\n"
 	                                  "\\begin{displaymath}\n"
 	                               << tex

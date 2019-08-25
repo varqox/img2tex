@@ -10,11 +10,11 @@
 
 enum class SymbolKind {
 	INDEX, // upper or lower index like {}_x or {}^x
-	OTHER
+	OTHER,
 };
 
 struct Symbol {
-	static constexpr const char INDEX_PREFIX[] = "{}_";
+	static constexpr std::string_view INDEX_PREFIX = "{}_";
 
 	Matrix<int> img;
 	std::string tex;
@@ -25,7 +25,7 @@ struct Symbol {
 };
 
 class SymbolDatabase {
-	std::vector<Symbol> symbols_; // (symbol, tex formula)
+	std::vector<Symbol> symbols_;
 	SymbolStatistics stats_;
 
 	static void write_symbol(std::ofstream& file, const Matrix<int>& symbol,
@@ -158,7 +158,7 @@ public:
 		int rows = count(text.begin(), text.end(), '\n') + 1;
 		int cols = text.size() / rows;
 		if ((text.size() - (rows - 1)) % rows !=
-		    0) // rows - 1 == '\n' occurrences
+		    0) // rows - 1 == number of '\n' occurrences
 			throw std::runtime_error("Text does not contain symbol");
 
 		Matrix<int> res(rows, cols);
@@ -205,9 +205,9 @@ private:
 		   "\\pi",      "\\varpi",   "\\epsilon", "\\varepsilon", "\\rho",
 		   "\\varrho",  "\\zeta",    "\\Sigma",   "\\sigma",      "\\varsigma",
 		   "\\eta",     "\\tau",     "\\Theta",   "\\theta",      "\\vartheta",
-		   "\\Upsilon", "\\upsilon", "\\iota",    "\\Phi",        "\\phi",
-		   "\\varphi",  "\\kappa",   "\\chi",     "\\Lambda",     "\\lambda",
-		   "\\Psi",     "\\psi",     "\\mu",      "\\Omega",      "\\omega"};
+		   "\\Upsilon", "\\upsilon", "\\Phi",     "\\phi",        "\\varphi",
+		   "\\kappa",   "\\chi",     "\\Lambda",  "\\lambda",     "\\Psi",
+		   "\\psi",     "\\mu",      "\\Omega",   "\\omega"};
 
 		const vector<string> small_latin = {
 		   "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m",
@@ -220,142 +220,167 @@ private:
 		const vector<string> digits = {"0", "1", "2", "3", "4",
 		                               "5", "6", "7", "8", "9"};
 
-		const vector<string> operators = {
-		   "+", "-", "\\neg", "!", "\\#", ">", "<",
-		   // "=",
-		   "\\%", "\\doteq", "\\equiv", "\\approx", "\\cong", "\\simeq",
-		   "\\sim", "\\propto", "\\neq", "\\ne",
-		   // "\\nless",
-		   // "\\ngtr",
-		   "\\leq", "\\geq",
-		   // "\\leqslant",
-		   // "\\geqslant",
-		   // "\\nleq",
-		   // "\\ngeq",
-		   // "\\nleqslant",
-		   // "\\ngeqslant",
-		   "\\prec", "\\succ",
-		   // "\\nprec",
-		   // "\\nsucc",
-		   "\\preceq", "\\succeq",
-		   // "\\npreceq",
-		   // "\\nsucceq",
-		   "\\ll", "\\gg",
-		   // "\\lll",
-		   // "\\ggg",
-		   "\\subset", "\\supset", "\\not\\supset", "\\not\\subset",
-		   "\\subseteq", "\\supseteq",
-		   // "\\nsubseteq",
-		   // "\\nsupseteq",
-		   // "\\sqsubset",
-		   // "\\sqsupset",
-		   "\\sqsubseteq", "\\sqsupseteq", "\\|", "\\parallel",
-		   // "\\nparallel",
-		   "\\asymp", "\\bowtie", "\\vdash", "\\dashv", "\\in", "\\ni",
-		   "\\smile", "\\frown", "\\models", "\\notin", "\\perp",
-		   // "\\mid",
-		   "\\pm", "\\cap", "\\diamond", "\\oplus", "\\mp", "\\cup",
-		   "\\bigtriangleup", "\\ominus", "\\times", "\\uplus",
-		   "\\bigtriangledown", "\\otimes", "\\div", "\\sqcap",
-		   "\\triangleleft", "\\oslash", "\\ast", "\\sqcup", "\\triangleright",
-		   "\\odot", "\\star", "\\vee", "\\bigcirc", "\\circ", "\\dagger",
-		   "\\wedge", "\\bullet", "\\setminus", "\\ddagger", "\\wr", "\\amalg",
-		   // "\\nleqq",
-		   // "\\ngeqq",
-		   // "\\lneq",
-		   // "\\gneq",
-		   // "\\lneqq",
-		   // "\\gneqq",
-		   // "\\lvertneqq",
-		   // "\\gvertneqq",
-		   // "\\lnsim",
-		   // "\\gnsim",
-		   // "\\lnapprox",
-		   // "\\gnapprox",
-		   // "\\precneqq",
-		   // "\\succneqq",
-		   // "\\precnsim",
-		   // "\\succnsim",
-		   // "\\precnapprox",
-		   // "\\succnapprox",
-		   // "\\nsim",
-		   // "\\ncong",
-		   // "\\nshortmid",
-		   // "\\nshortparallel",
-		   // "\\nmid",
-		   // "\\nvdash",
-		   // "\\nvDash",
-		   // "\\nVdash",
-		   // "\\nVDash",
-		   // "\\ntriangleleft",
-		   // "\\ntriangleright",
-		   // "\\ntrianglelefteq",
-		   // "\\ntrianglerighteq",
-		   // "\\nsubseteqq",
-		   // "\\nsupseteqq",
-		   // "\\subsetneq",
-		   // "\\supsetneq",
-		   // "\\varsubsetneq",
-		   // "\\varsupsetneq",
-		   // "\\subsetneqq",
-		   // "\\supsetneqq",
-		   // "\\varsubsetneqq",
-		   // "\\varsupsetneqq",
-		   "\\exists", "\\not\\exists",
-		   // "\\nexists",
-		   "\\forall", "\\lor", "\\land", "\\Longrightarrow",
-		   // "\\implies",
-		   "\\Rightarrow", "\\Longleftarrow", "\\Leftarrow", "\\iff",
-		   "\\Leftrightarrow", "\\top", "\\bot", "\\emptyset",
-		   // "\\varnothing",
-		   "\\O", "\\not\\perp", "\\angle",
-		   // "\\measuredangle",
+		const vector<string> index_operators = {
+		   "+",
+		   "-",
+		   "\\neg",
+		   "\\#",
+		   ">",
+		   "<",
+		   "\\%",
+		   "\\doteq",
+		   "\\equiv",
+		   "\\approx",
+		   "\\cong",
+		   "\\simeq",
+		   "\\sim",
+		   "\\propto",
+		   "\\neq",
+		   "\\ne",
+		   "\\leq",
+		   "\\geq",
+		   "\\prec",
+		   "\\succ",
+		   "\\preceq",
+		   "\\succeq",
+		   "\\ll",
+		   "\\gg",
+		   "\\subset",
+		   "\\supset",
+		   "\\not\\supset",
+		   "\\not\\subset",
+		   "\\subseteq",
+		   "\\supseteq",
+		   "\\sqsubseteq",
+		   "\\sqsupseteq",
+		   "\\|",
+		   "\\parallel",
+		   "\\asymp",
+		   "\\bowtie",
+		   "\\vdash",
+		   "\\dashv",
+		   "\\in",
+		   "\\ni",
+		   "\\smile",
+		   "\\frown",
+		   "\\models",
+		   "\\notin",
+		   "\\perp",
+		   "\\pm",
+		   "\\cap",
+		   "\\diamond",
+		   "\\oplus",
+		   "\\mp",
+		   "\\cup",
+		   "\\bigtriangleup",
+		   "\\ominus",
+		   "\\times",
+		   "\\uplus",
+		   "\\bigtriangledown",
+		   "\\otimes",
+		   "\\div",
+		   "\\sqcap",
+		   "\\triangleleft",
+		   "\\oslash",
+		   "\\sqcup",
+		   "\\triangleright",
+		   "\\odot",
+		   "\\star",
+		   "\\vee",
+		   "\\bigcirc",
+		   "\\circ",
+		   "\\dagger",
+		   "\\wedge",
+		   "\\bullet",
+		   "\\setminus",
+		   "\\ddagger",
+		   "\\wr",
+		   "\\amalg",
+		   "\\exists",
+		   "\\not\\exists",
+		   "\\forall",
+		   "\\lor",
+		   "\\land",
+		   "\\Longrightarrow",
+		   "\\Rightarrow",
+		   "\\Longleftarrow",
+		   "\\Leftarrow",
+		   "\\iff",
+		   "\\Leftrightarrow",
+		   "\\top",
+		   "\\bot",
+		   "\\emptyset",
+		   "\\O",
+		   "\\not\\perp",
+		   "\\angle",
 		   "\\triangle",
-		   // "\\square",
-		   "\\{", "\\}", "(", ")", "\\lceil", "\\rceil",
-		   // "\\ulcorner",
-		   // "\\urcorner",
-		   "/", "\\backslash", "[", "]", "\\langle", "\\rangle", "\\lfloor",
+		   "\\{",
+		   "\\}",
+		   "(",
+		   ")",
+		   "\\lceil",
+		   "\\rceil",
+		   "/",
+		   "\\backslash",
+		   "[",
+		   "]",
+		   "\\langle",
+		   "\\rangle",
+		   "\\lfloor",
 		   "\\rfloor",
-		   // "\\llcorner",
-		   // "\\lrcorner",
-		   "\\rightarrow", "\\to", "\\longrightarrow", "\\mapsto",
-		   "\\longmapsto", "\\leftarrow", "\\gets", "\\longleftarrow",
-		   "\\uparrow", "\\Uparrow", "\\downarrow", "\\Downarrow",
-		   "\\updownarrow", "\\Updownarrow", "\\partial", "\\imath", "\\Re",
+		   "\\rightarrow",
+		   "\\to",
+		   "\\longrightarrow",
+		   "\\mapsto",
+		   "\\longmapsto",
+		   "\\leftarrow",
+		   "\\gets",
+		   "\\longleftarrow",
+		   "\\uparrow",
+		   "\\Uparrow",
+		   "\\downarrow",
+		   "\\Downarrow",
+		   "\\updownarrow",
+		   "\\Updownarrow",
+		   "\\partial",
+		   "\\imath",
+		   "\\Re",
 		   "\\nabla",
-		   // "\\eth",
-		   "\\jmath", "\\Im",
-		   // "\\Box",
-		   "\\hbar", "\\ell", "\\wp", "\\infty", "\\aleph",
-		   // "\\beth",
-		   // "\\gimel",
-		   "\\sin", "\\arcsin", "\\csc", "\\cos", "\\arccos", "\\sec", "\\tan",
-		   "\\arctan", "\\cot", "\\sinh",
-		   // "\\operatorname{arsinh}",
-		   // "\\operatorname{csch}",
-		   // "\\operatorname{arcsch}",
+		   "\\jmath",
+		   "\\Im",
+		   "\\hbar",
+		   "\\ell",
+		   "\\wp",
+		   "\\infty",
+		   "\\aleph",
+		   "\\sin",
+		   "\\arcsin",
+		   "\\csc",
+		   "\\cos",
+		   "\\arccos",
+		   "\\sec",
+		   "\\tan",
+		   "\\arctan",
+		   "\\cot",
+		   "\\sinh",
 		   "\\cosh",
-		   // "\\operatorname{arcosh}",
-		   // "\\operatorname{sech}",
-		   // "\\operatorname{arsech}",
 		   "\\tanh",
-		   // "\\operatorname{artanh}",
 		   "\\coth",
-		   // "\\operatorname{arcoth}"
 		};
 
-		for (auto const* vec :
-		     {&greek_letters, &small_latin, &big_latin, &digits, &operators})
+		const vector<string> other_operators = {
+		   "\\ast",
+		};
+
+		for (auto const* vec : {&greek_letters, &small_latin, &big_latin,
+		                        &digits, &index_operators, &other_operators}) {
 			for (string const& symbol : *vec)
 				job_queue.add_job(symbol);
+		}
 
 		for (auto const* vec : {&greek_letters, &small_latin, &big_latin})
 			for (string const& symbol : *vec)
 				job_queue.add_job(symbol + "'");
-
-		// for (string const& letter : big_latin)
-		// job_queue.add_job("\\mathbb{" + letter + "}");
 
 		for (auto const* vec : {&small_latin, &big_latin})
 			for (string const& letter : *vec)
@@ -373,10 +398,10 @@ private:
 			return (tex.size() == 1 ? tex : "{" + tex + "}");
 		};
 
-		for (auto const* vec :
-		     {&small_latin, &big_latin, &digits, &operators, &greek_letters}) {
+		for (auto const* vec : {&small_latin, &big_latin, &digits,
+		                        &index_operators, &greek_letters}) {
 			for (string const& symbol : *vec) {
-				job_queue.add_job(Symbol::INDEX_PREFIX +
+				job_queue.add_job(string(Symbol::INDEX_PREFIX) +
 				                  brace_for_index(symbol));
 			}
 		}
@@ -399,7 +424,7 @@ public:
 
 		add_symbol(text_img_to_symbol("##\n"
 		                              "##\n"),
-		           "\\cdot");
+		           ".");
 
 		JobQueue<std::string> job_queue(1000);
 		std::vector<std::thread> threads(std::thread::hardware_concurrency());

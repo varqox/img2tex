@@ -90,8 +90,9 @@ public:
 	}
 
 	template <size_t MAX_OFFSET = 1>
-	double img_diff(const SubmatrixView<int>& first,
-	                const SubmatrixView<int>& second) const {
+	double
+	img_diff(const SubmatrixView<int>& first, const SubmatrixView<int>& second,
+	         double diff_threshold = std::numeric_limits<double>::max()) const {
 		constexpr bool debug = false;
 
 		// first image will be shifted by (x, y) for each x, y \in [-MAX_OFFSET,
@@ -99,7 +100,6 @@ public:
 		int rows = std::max(first.rows(), second.rows());
 		int cols = std::max(first.cols(), second.cols());
 		Matrix<int> fir(rows + MAX_OFFSET * 2, cols + MAX_OFFSET * 2);
-		// second.resized(rows + MAX_OFFSET, cols + MAX_OFFSET);
 
 		auto copy_submatrix_with_offset = [](Matrix<int>& dest,
 		                                     const SubmatrixView<int>& src,
@@ -114,12 +114,8 @@ public:
 		};
 
 		copy_submatrix_with_offset(fir, first, 0, 0);
-		// auto first_components = Components(first);
-		// auto second_components = Components(second);
 
 		if constexpr (debug) {
-			// first_components.print();
-			// second_components.print();
 			show_matrix(calc_prob_pixels(first));
 			show_matrix(calc_prob_pixels(second));
 			binshow_matrix(first);
@@ -127,8 +123,7 @@ public:
 			binshow_matrix(fir);
 		}
 
-		int first_filled_pixels = std::count(first.begin(), first.end(), 1);
-		int second_filled_pixels = std::count(second.begin(), second.end(), 1);
+		constexpr double DIFFERING_CELL_PENALTY = 1e-3;
 
 		auto hard_img_diff_with_offset =
 		   [&, diff = Matrix<double>(fir.rows(), fir.cols()),
@@ -141,8 +136,22 @@ public:
 			   diff.fill(0);
 			   diff_orig.fill(0);
 			   differ.fill(0);
+
+			   double diff_sum = 0;
+			   // Returns true iff. the sum has exceeded the threshold
+			   auto update_diff_sum = [&](int r, int c) {
+				   if (r < 0 or c < 0 or not differ[r][c])
+					   return false;
+
+				   diff[r][c] = std::abs(sum3x3(diff_orig, r, c));
+				   diff_sum += diff[r][c];
+				   return (diff_sum > diff_threshold);
+			   };
 			   for (int i = 0; i < diff.rows(); ++i) {
 				   for (int j = 0; j < diff.cols(); ++j) {
+					   if (update_diff_sum(i - 1, j - 2))
+						   return diff_sum;
+
 					   int si = i - dr;
 					   int sj = j - dc;
 					   int second_ij = (si < 0 or si >= second.rows() or
@@ -154,21 +163,22 @@ public:
 						   continue; // No difference
 
 					   differ[i][j] = 1;
-					   double x =
+					   diff_sum += DIFFERING_CELL_PENALTY;
+
+					   diff_orig[i][j] =
 					      prob_pxiel(fir, i, j) - prob_pxiel(second, si, sj);
-					   diff_orig[i][j] = x;
 				   }
+
+				   if (update_diff_sum(i - 1, diff.cols() - 2))
+					   return diff_sum;
+				   if (update_diff_sum(i - 1, diff.cols() - 1))
+					   return diff_sum;
 			   }
 
-			   for (int i = 0; i < diff.rows(); ++i)
-				   for (int j = 0; j < diff.cols(); ++j)
-					   if (differ[i][j])
-						   diff[i][j] = std::abs((sum3x3(diff_orig, i, j)));
-			   // diff[i][j] = sqr((sum3x3(diff_orig, i, j)));
-
-			   // std::cerr << setprecision(6) << fixed << cum_diff / (cols *
-			   // rows)
-			   // << std::endl;
+			   for (int i = diff.rows() - 1, j = 0; j < diff.cols(); ++j) {
+				   if (update_diff_sum(i, j))
+					   return diff_sum;
+			   }
 
 			   if constexpr (debug) {
 				   std::cerr << "dr: " << dr << " dc: " << dc << '\n';
@@ -177,71 +187,10 @@ public:
 				   show_matrix(diff);
 			   }
 
-			   // Divide image into components and calculate sum over diff of
-			   // component / its size)
-			   /*auto sum_of_components_diff =
-			      [&diff, debug](const Components& comps, int di, int dj) {
-			          struct ComponentStats {
-			              int size = 0;
-			              double diff_sum = 0;
-			          };
+			   if constexpr (debug)
+				   std::cerr << "simple: " << diff_sum << std::endl;
 
-			          vector<ComponentStats> components(comps.components());
-			          for (int i = 0; i < comps.rows(); ++i) {
-			              for (int j = 0; j < comps.cols(); ++j) {
-			                  int x = comps.component_id(i, j);
-			                  if (x != -1) {
-			                      ++components[x].size;
-			                      components[x].diff_sum +=
-			                         diff[i + di][j + dj];
-			                  }
-			              }
-			          }
-
-			          double res = 0;
-			          for (size_t i = 0; i < components.size(); ++i) {
-			              auto&& component = components[i];
-			              if (component.size > 0) {
-			                  double val = component.diff_sum / component.size;
-			                  res += val;
-
-			                  if constexpr (debug) {
-			                      std::cerr << "component " << i
-			                           << ": size = " << component.size
-			                           << " diff = " << setprecision(6) << fixed
-			                           << component.diff_sum << std::endl;
-			                  }
-			              }
-			          }
-
-			          return res;
-			      };*/
-
-			   // double fir_diff = sum_of_components_diff(fir_components, dr,
-			   // dc); double sec_diff = sum_of_components_diff(sec_components,
-			   // 0, 0);
-			   // double fir_diff = sum_of_components_diff(first_components,
-			   //                                          MAX_OFFSET,
-			   //                                          MAX_OFFSET);
-			   // double sec_diff =
-			   //    sum_of_components_diff(second_components, dr, dc);
-
-			   double simple = 0;
-			   for (double x : diff)
-				   simple += x;
-
-			   // double mfill = std::min(first_filled_pixels,
-			   // second_filled_pixels) + 1; simple *= 1 + 40 / mfill;
-
-			   if constexpr (debug) {
-				   // std::cerr << "fir_diff: " << fir_diff << std::endl;
-				   // std::cerr << "sec_diff: " << sec_diff << std::endl;
-				   // std::cerr << "sum: " << fir_diff + sec_diff << std::endl;
-				   std::cerr << "simple: " << simple << std::endl;
-			   }
-
-			   // return fir_diff + sec_diff;
-			   return simple;
+			   return diff_sum;
 		   };
 
 		double min_diff = std::numeric_limits<double>::max();
