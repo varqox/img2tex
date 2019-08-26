@@ -22,3 +22,10 @@
 img2tex
 unique_symbol_img_files
 make_comparison_img
+
+symbol_*
+full_main
+main-untexed*
+comparison.png
+untexed.png
+untexed.tex

@@ -1,0 +1,11 @@
+#!/bin/bash
+set -e
+
+SOURCE="main/$1.png"
+
+echo "$1:"
+./img2tex untex $SOURCE | tail -n 1 > untexed.tex
+./img2tex tex untexed.png < untexed.tex || (echo "$1"; cp $SOURCE comparison.png; exit 1)
+./make_comparison_img $SOURCE untexed.png comparison.png
+echo "$1:"
+cat untexed.tex
