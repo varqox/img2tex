@@ -28,7 +28,8 @@ class SymbolDatabase {
 	std::vector<Symbol> symbols_;
 	SymbolStatistics stats_;
 
-	static void write_symbol(std::ofstream& file, const Matrix<int>& symbol,
+	static void write_symbol(std::ofstream& file,
+	                         const Matrix<int>& symbol,
 	                         const std::string& tex_formula) {
 		file << tex_formula.size() << ' ' << tex_formula << ' ' << symbol.rows()
 		     << ' ' << symbol.cols() << ' ';
@@ -106,8 +107,8 @@ class SymbolDatabase {
 	}
 
 	void add_symbol(const Matrix<int>& symbol, const std::string& tex_formula) {
-		symbols_.emplace_back(symbol, tex_formula,
-		                      tex_to_symbol_kind(tex_formula));
+		symbols_.emplace_back(
+		   symbol, tex_formula, tex_to_symbol_kind(tex_formula));
 		update_statistics(symbol);
 	}
 
@@ -217,8 +218,8 @@ private:
 		   "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M",
 		   "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"};
 
-		const vector<string> digits = {"0", "1", "2", "3", "4",
-		                               "5", "6", "7", "8", "9"};
+		const vector<string> digits = {
+		   "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"};
 
 		const vector<string> index_operators = {
 		   "+",
@@ -372,8 +373,12 @@ private:
 		   "\\ast",
 		};
 
-		for (auto const* vec : {&greek_letters, &small_latin, &big_latin,
-		                        &digits, &index_operators, &other_operators}) {
+		for (auto const* vec : {&greek_letters,
+		                        &small_latin,
+		                        &big_latin,
+		                        &digits,
+		                        &index_operators,
+		                        &other_operators}) {
 			for (string const& symbol : *vec)
 				job_queue.add_job(symbol);
 		}
@@ -398,8 +403,11 @@ private:
 			return (tex.size() == 1 ? tex : "{" + tex + "}");
 		};
 
-		for (auto const* vec : {&small_latin, &big_latin, &digits,
-		                        &index_operators, &greek_letters}) {
+		for (auto const* vec : {&small_latin,
+		                        &big_latin,
+		                        &digits,
+		                        &index_operators,
+		                        &greek_letters}) {
 			for (string const& symbol : *vec) {
 				job_queue.add_job(string(Symbol::INDEX_PREFIX) +
 				                  brace_for_index(symbol));

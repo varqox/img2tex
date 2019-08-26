@@ -32,9 +32,11 @@ WithoutBordersRes without_empty_borders(const SubmatrixView<int>& mat) {
 	if (min_row == rows)
 		return {SubmatrixView<int>(mat, 0, 0, 0, 0), rows / 2, (rows + 1) / 2};
 
-	return {SubmatrixView<int>(mat, min_row, min_col, max_row - min_row + 1,
-	                           max_col - min_col + 1),
-	        min_row, rows - 1 - max_row};
+	return {
+	   SubmatrixView<int>(
+	      mat, min_row, min_col, max_row - min_row + 1, max_col - min_col + 1),
+	   min_row,
+	   rows - 1 - max_row};
 }
 
 // Returns path of the png_file
@@ -71,10 +73,20 @@ string tex_to_png_file(const string& tex, bool quiet) {
 
 	if (not run("latex", "-output-directory=/tmp", tex_file.path()) or
 	    not run("dvips", dvi_filename, "-o", ps_filename) or
-	    not run("pstoimg", "-interlaced", "-transparent", "-scale", "1.4",
-	            "-crop", "as", "-type", "png", "-out", png_filename,
-	            ps_filename))
+	    not run("pstoimg",
+	            "-interlaced",
+	            "-transparent",
+	            "-scale",
+	            "1.4",
+	            "-crop",
+	            "as",
+	            "-type",
+	            "png",
+	            "-out",
+	            png_filename,
+	            ps_filename)) {
 		throw std::runtime_error("Failed to convert tex to png: " + tex);
+	}
 
 	remove_png_file = false;
 	return png_filename;
@@ -103,7 +115,10 @@ Matrix<int> safe_tex_to_img_matrix(const std::string& tex) {
 	int last_empty_column = --end.base() - col_sum.begin();
 
 	return without_empty_borders(
-	          SubmatrixView(matrix, 0, first_empty_column, matrix.rows(),
+	          SubmatrixView(matrix,
+	                        0,
+	                        first_empty_column,
+	                        matrix.rows(),
 	                        last_empty_column - first_empty_column))
 	   .symbol.to_matrix();
 }

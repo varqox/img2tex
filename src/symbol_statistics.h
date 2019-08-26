@@ -26,11 +26,12 @@ public:
 		}};
 
 		int res = 0;
-		for (int i = std::max(r - 1, 0), rlim = std::min(r + 2, mat.rows());
-		     i < rlim; ++i)
-			for (int j = std::max(c - 1, 0), clim = std::min(c + 2, mat.cols());
-			     j < clim; ++j)
+		int rlim = std::min(r + 2, mat.rows());
+		int clim = std::min(c + 2, mat.cols());
+		for (int i = std::max(r - 1, 0); i < rlim; ++i) {
+			for (int j = std::max(c - 1, 0); j < clim; ++j)
 				res |= bool(mat[i][j]) << bit[i - r + 1][j - c + 1];
+		}
 
 		return res;
 	}
@@ -91,7 +92,8 @@ public:
 
 	template <size_t MAX_OFFSET = 1>
 	double
-	img_diff(const SubmatrixView<int>& first, const SubmatrixView<int>& second,
+	img_diff(const SubmatrixView<int>& first,
+	         const SubmatrixView<int>& second,
 	         double diff_threshold = std::numeric_limits<double>::max()) const {
 		constexpr bool debug = false;
 
@@ -103,7 +105,8 @@ public:
 
 		auto copy_submatrix_with_offset = [](Matrix<int>& dest,
 		                                     const SubmatrixView<int>& src,
-		                                     int dr, int dc) {
+		                                     int dr,
+		                                     int dc) {
 			dr += MAX_OFFSET;
 			dc += MAX_OFFSET;
 
@@ -126,7 +129,8 @@ public:
 		constexpr double DIFFERING_CELL_PENALTY = 1e-3;
 
 		auto hard_img_diff_with_offset =
-		   [&, diff = Matrix<double>(fir.rows(), fir.cols()),
+		   [&,
+		    diff = Matrix<double>(fir.rows(), fir.cols()),
 		    diff_orig = Matrix<double>(fir.rows(), fir.cols()),
 		    differ = Matrix<char>(fir.rows(), fir.cols())](int dr,
 		                                                   int dc) mutable {

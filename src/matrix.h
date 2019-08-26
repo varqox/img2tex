@@ -212,7 +212,10 @@ class SubmatrixView {
 	friend class SubmatrixView;
 
 public:
-	SubmatrixView(const Matrix<U>& matrix, int beg_row, int beg_col, int rows,
+	SubmatrixView(const Matrix<U>& matrix,
+	              int beg_row,
+	              int beg_col,
+	              int rows,
 	              int cols)
 	   : mat_(matrix), beg_row_(beg_row), beg_col_(beg_col), rows_(rows),
 	     cols_(cols) {}
@@ -220,14 +223,23 @@ public:
 	SubmatrixView(const Matrix<U>& matrix)
 	   : SubmatrixView(matrix, 0, 0, matrix.rows(), matrix.cols()) {}
 
-	SubmatrixView(const SubmatrixView<U>& submatrix, int beg_row, int beg_col,
-	              int rows, int cols)
-	   : SubmatrixView(submatrix.mat_, submatrix.beg_row_ + beg_row,
-	                   submatrix.beg_col_ + beg_col, rows, cols) {}
+	SubmatrixView(const SubmatrixView<U>& submatrix,
+	              int beg_row,
+	              int beg_col,
+	              int rows,
+	              int cols)
+	   : SubmatrixView(submatrix.mat_,
+	                   submatrix.beg_row_ + beg_row,
+	                   submatrix.beg_col_ + beg_col,
+	                   rows,
+	                   cols) {}
 
 	template <class V>
 	SubmatrixView(const SubmatrixView<V, U>& other)
-	   : SubmatrixView(other.mat_, other.beg_row_, other.beg_col_, other.rows_,
+	   : SubmatrixView(other.mat_,
+	                   other.beg_row_,
+	                   other.beg_col_,
+	                   other.rows_,
 	                   other.cols_) {}
 
 	Matrix<T> resized(int rows, int cols) const {
@@ -265,9 +277,9 @@ public:
 		using reference = value_type&;
 
 	private:
-		using SubmatrixViewPtr =
-		   std::conditional_t<std::is_const_v<Type>, const SubmatrixView*,
-		                      SubmatrixView*>;
+		using SubmatrixViewPtr = std::conditional_t<std::is_const_v<Type>,
+		                                            const SubmatrixView*,
+		                                            SubmatrixView*>;
 		SubmatrixViewPtr sv = nullptr;
 		int row = 0, col = 0;
 

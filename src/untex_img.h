@@ -11,5 +11,6 @@ struct UntexFailure {
 };
 
 std::variant<std::string, UntexFailure>
-untex_img(const Matrix<int>& img, const SymbolDatabase& symbol_database,
+untex_img(const Matrix<int>& img,
+          const SymbolDatabase& symbol_database,
           bool be_verbose);

@@ -60,9 +60,10 @@ void unique_files_from_full_main_to_main(const string& src_dir,
 	int i = 0;
 	for (auto const& [symbol, path_str] : images) {
 		fs::path path = path_str;
-		if (not fs::copy_file(path, fs::path("main/") += to_string(++i) +=
-		                            path.extension()))
+		if (not fs::copy_file(
+		       path, fs::path("main/") += to_string(++i) += path.extension())) {
 			throw std::runtime_error("file copy failed");
+		}
 	}
 }
 

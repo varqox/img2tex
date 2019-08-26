@@ -38,8 +38,8 @@ constexpr bool contains(T&& collection, V&& val) {
 
 template <class T, class V>
 constexpr bool binary_search(T&& collection, V&& val) {
-	return std::binary_search(std::begin(collection), std::end(collection),
-	                          std::forward<V>(val));
+	return std::binary_search(
+	   std::begin(collection), std::end(collection), std::forward<V>(val));
 }
 
 template <class... T>

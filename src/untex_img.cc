@@ -48,7 +48,8 @@ class ImgUntexer {
 	}
 
 public:
-	ImgUntexer(Matrix<int> image, const SymbolDatabase& symbol_database,
+	ImgUntexer(Matrix<int> image,
+	           const SymbolDatabase& symbol_database,
 	           bool be_verbose = false)
 	   : orignal_image_(std::move(image)), symbols_db_(symbol_database),
 	     be_verbose_(be_verbose) {}
@@ -123,9 +124,14 @@ private:
 				if (not opt.has_value())
 					continue;
 
-				verbose_log(pos, ": ", opt->last_symbol.matched_symbol_tex,
-				            " with cum_diff: ", fixed, setprecision(6),
-				            opt->best_cumulative_diff, '\n');
+				verbose_log(pos,
+				            ": ",
+				            opt->last_symbol.matched_symbol_tex,
+				            " with cum_diff: ",
+				            fixed,
+				            setprecision(6),
+				            opt->best_cumulative_diff,
+				            '\n');
 			}
 		}
 
@@ -225,9 +231,15 @@ private:
 		string best_symbol_tex =
 		   matched_symbol_to_tex(curr_symbol, *best_symbol);
 		if (best_diff <= MATCH_THRESHOLD) {
-			verbose_log("\033[1;32mMatched as group ", symbol_group, ":\033[m ",
-			            best_symbol_tex, " with diff: ", setprecision(6), fixed,
-			            best_diff, '\n');
+			verbose_log("\033[1;32mMatched as group ",
+			            symbol_group,
+			            ":\033[m ",
+			            best_symbol_tex,
+			            " with diff: ",
+			            setprecision(6),
+			            fixed,
+			            best_diff,
+			            '\n');
 			if (be_verbose_) {
 				binshow_matrix(curr_symbol.img);
 				binshow_matrix(best_symbol->img);
@@ -248,9 +260,14 @@ private:
 			}
 
 		} else if constexpr (debug) {
-			verbose_log("\033[33mBest match as group ", symbol_group,
-			            ":\033[m ", best_symbol_tex,
-			            " with diff: ", setprecision(6), fixed, best_diff,
+			verbose_log("\033[33mBest match as group ",
+			            symbol_group,
+			            ":\033[m ",
+			            best_symbol_tex,
+			            " with diff: ",
+			            setprecision(6),
+			            fixed,
+			            best_diff,
 			            '\n');
 		}
 	}

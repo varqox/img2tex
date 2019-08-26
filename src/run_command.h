@@ -19,8 +19,8 @@ bool run_command(bool quiet, const std::string& cmd, Args&&... args) {
 			freopen("/dev/null", "w", stderr);
 		}
 
-		execlp(cmd.data(), cmd.data(), std::string(args).data()...,
-		       (char*)nullptr);
+		execlp(
+		   cmd.data(), cmd.data(), std::string(args).data()..., (char*)nullptr);
 		_exit(-1);
 	}
 

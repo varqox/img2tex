@@ -89,8 +89,8 @@ int learn_command(int argc, char** argv) {
 	SymbolDatabase sdb;
 	if (access(MANUAL_SYMBOLS_DB_FILE, F_OK) == 0)
 		sdb.add_from_file(MANUAL_SYMBOLS_DB_FILE);
-	sdb.add_symbol_and_append_file(SymbolDatabase::text_img_to_symbol(symbol),
-	                               tex, MANUAL_SYMBOLS_DB_FILE);
+	sdb.add_symbol_and_append_file(
+	   SymbolDatabase::text_img_to_symbol(symbol), tex, MANUAL_SYMBOLS_DB_FILE);
 
 	return 0;
 }

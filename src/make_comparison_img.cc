@@ -4,7 +4,8 @@ using std::cerr;
 using std::endl;
 using std::max;
 
-void make_comparison_img(const char* top_img_path, const char* bottom_img_path,
+void make_comparison_img(const char* top_img_path,
+                         const char* bottom_img_path,
                          const char* out_img_path) {
 	auto top_img = teximg_to_matrix(top_img_path);
 	auto bottom_img = teximg_to_matrix(bottom_img_path);
@@ -26,8 +27,8 @@ void make_comparison_img(const char* top_img_path, const char* bottom_img_path,
 	};
 
 	copy_img(top_img, 0, (cols - top_img.cols()) / 2);
-	copy_img(bottom_img, top_img.rows() + SPACING,
-	         (cols - bottom_img.cols()) / 2);
+	copy_img(
+	   bottom_img, top_img.rows() + SPACING, (cols - bottom_img.cols()) / 2);
 
 	save_binary_image_to(out_img, out_img_path);
 }
