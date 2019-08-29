@@ -27,7 +27,3 @@ $(eval $(call add_executable, make_comparison_img, $(IMG2TEX_FLAGS), \
 
 .PHONY: format
 format: $(shell find src | grep -E '\.(cc?|h)$$' | sed 's/$$/-make-format/')
-
-.PHONY: help
-help:
-	@echo "Nothing is here yet..."
