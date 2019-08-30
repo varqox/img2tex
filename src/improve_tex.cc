@@ -13,20 +13,49 @@ using std::vector;
 
 static string space_digits_into_3digit_groups(const string& tex) {
 	string res;
-	int digits_count = 0;
-	for (auto it = tex.rbegin(); it != tex.rend(); ++it) {
-		char c = *it;
-		if (not isdigit(c)) {
-			digits_count = 0;
-		} else if (++digits_count == 4) {
-			digits_count = 1;
-			res += ",\\";
+	auto parse = [&](size_t beg, size_t end) {
+		if (end - beg < 4) {
+			res.append(tex, beg, end - beg);
+			return;
 		}
 
-		res += c;
+		char left_bound = (beg == 0 ? ' ' : tex[beg - 1]);
+		char right_bound = (end == tex.size() ? ' ' : tex[end]);
+
+		// Decide from where to start grouping: right or left
+		int pos_mod_to_add_space_before;
+		if (right_bound == '.' or left_bound != '.') {
+		 	pos_mod_to_add_space_before = end % 3; // right
+		} else if (end - beg < 5) {
+			res.append(tex, beg, end - beg); // none
+			return;
+		} else {
+			pos_mod_to_add_space_before = beg % 3; // left
+		}
+
+		res += tex[beg];
+		while (++beg < end) {
+			if (beg % 3 == pos_mod_to_add_space_before)
+				res += "\\,";
+			res += tex[beg];
+		}
+	};
+
+	size_t beg = 0;
+	for (size_t i = 0; i < tex.size(); ++i) {
+		if (isdigit(tex[i]))
+			continue;
+
+		if (beg < i)
+			parse(beg, i);
+
+		parse(i, i + 1);
+		beg = i + 1;
 	}
 
-	reverse(res.begin(), res.end());
+	if (beg < tex.size())
+		parse(beg, tex.size());
+
 	return res;
 }
 
