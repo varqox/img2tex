@@ -2,6 +2,7 @@
 #include "string.h"
 #include "utilities.h"
 
+#include <iostream>
 #include <regex>
 
 using std::regex;
@@ -33,9 +34,9 @@ static string separate_indexes_from_symbols(const string& tex) {
 	return regex_replace(tex, regex(R"#((\{\})?(\^|_))#"), " $2");
 }
 
-#include <iostream>
-
 namespace {
+
+constexpr bool debug = false;
 
 class LatexParser {
 	string tex_;
@@ -46,6 +47,9 @@ public:
 	   : tex_(separate_indexes_from_symbols(tex)),
 	     matching_bracket_pos_(tex_.size(), -1) {
 		fill_matching_bracket_pos();
+
+		if constexpr (debug)
+			std::cerr << tex_ << '\n';
 	}
 
 	LatexParser(const LatexParser&) = delete;
@@ -67,11 +71,12 @@ private:
 	}
 
 public:
-	string parse() { return parse(0, tex_.size()); }
+	string parse() { return parse(0, tex_.size(), true); }
 
 private:
 	struct Symbol {
 		string symbol;
+		vector<string> arguments;
 		string top_index;
 		string bottom_index;
 
@@ -81,8 +86,11 @@ private:
 
 		string to_tex() const {
 			string res = symbol;
-			if (res.empty())
+			if (res.empty() and has_index())
 				res = "{}";
+
+			for (const string& arg : arguments)
+				res.append({'{'}).append(arg).append({'}'});
 
 			auto append_index = [&res](const string& str) {
 				if (str.size() == 1) {
@@ -90,9 +98,7 @@ private:
 					return;
 				}
 
-				res += '{';
-				res += str;
-				res += '}';
+				res.append({'{'}).append(str).append({'}'});
 			};
 
 			if (not bottom_index.empty()) {
@@ -110,43 +116,46 @@ private:
 	};
 
 	// Parses range [beg, end)
-	string parse(int beg, int end) {
+	string parse(int beg, int end, bool ignore_blanks) {
 		int pos = beg;
 
 		auto peek_char = [&] { return (pos == end ? ' ' : tex_[pos]); };
 
 		auto extract_char = [&] { return (pos == end ? ' ' : tex_[pos++]); };
 
-		auto parse_symbol = [&]() -> string {
+		auto parse_symbol = [&]() -> Symbol {
 			char c = extract_char();
 			if (c == '{') {
 				int mbp = matching_bracket_pos_[pos - 1];
-				string res = parse(pos, mbp);
+				string res = parse(pos, mbp, true);
 				pos = mbp + 1;
-				return res;
+				return {res, {}, "", ""};
 			}
 
 			if (c == '\\') {
 				c = extract_char();
 				if (not isalpha(c))
-					return string {'\\', c};
+					return {{'\\', c}, {}, "", ""};
 
-				string res {'\\', c};
+				Symbol sym = {{'\\', c}, {}, "", ""};
 				while (isalpha(peek_char()))
-					res += extract_char();
+					sym.symbol += extract_char();
+
+				bool ignore_blanks_inside =
+				   not is_one_of(sym.symbol, "\\textrm", "\\mathbf");
+
 				// Command arguments
 				while (peek_char() == '{') {
 					int mbp = matching_bracket_pos_[pos];
-					res += '{';
-					res += parse(pos, mbp);
-					res += '}';
+					string arg = parse(pos + 1, mbp, ignore_blanks_inside);
 					pos = mbp + 1;
+					sym.arguments.emplace_back(arg);
 				}
 
-				return res;
+				return sym;
 			}
 
-			return string(1, c);
+			return {string(1, c), {}, "", ""};
 		};
 
 		// Parse into symbols
@@ -168,12 +177,27 @@ private:
 				idx = LatexParser(idx).parse();
 			}
 
+			// Merge the same commands
+			if (symbols.size() > 1) {
+				auto& prev_symbol = symbols.end()[-2];
+				auto& curr_symbol = symbols.back();
+				if (not prev_symbol.has_index() and
+				    prev_symbol.symbol == curr_symbol.symbol and
+				    prev_symbol.arguments.size() == 1 and
+				    curr_symbol.arguments.size() == 1) {
+					prev_symbol.arguments[0] += curr_symbol.arguments[0];
+					prev_symbol.top_index = curr_symbol.top_index;
+					prev_symbol.bottom_index = curr_symbol.bottom_index;
+					symbols.pop_back();
+				}
+			}
+
 			top_index_symbols = 0;
 			bottom_index_symbols = 0;
 		};
 
 		while (pos < end) {
-			if (isspace(peek_char())) {
+			if (ignore_blanks and isspace(peek_char())) {
 				extract_char();
 				continue;
 			}
@@ -194,16 +218,24 @@ private:
 				if (not index_tex.empty())
 					index_tex += ' ';
 
-				index_tex += parse_symbol();
+				index_tex += parse_symbol().to_tex();
 				++index_symbols;
 				continue;
 			}
 
 			end_of_symbol();
-			symbols.push_back({parse_symbol(), "", ""});
+			symbols.emplace_back(parse_symbol());
 		}
 
 		end_of_symbol();
+
+		if constexpr (debug) {
+			std::cerr << "[" << beg << ", " << end << ") + " << ignore_blanks
+			          << ": '" << tex_.substr(beg, end - beg) << "'\n";
+			for (auto& symbol : symbols)
+				std::cerr << '\'' << symbol.to_tex() << "'\n";
+		}
+
 		return convert_symbols_to_string(symbols);
 	}
 

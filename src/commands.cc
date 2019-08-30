@@ -165,6 +165,4 @@ int untex_command(int argc, char** argv) {
 	   untex_img(img, symbol_db, true));
 }
 
-// TODO: automatic spacing between symbols
-// TODO: merging \mathrm{} together
 // TODO: add indexing symbols to make lookup fast for known symbols

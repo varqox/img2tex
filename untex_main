@@ -4,12 +4,14 @@
 # Example usage: ./untex_main 33..
 # Another example: ./untex_main '.*'
 
-for src in $(ls main | grep "^$1.png$"); do
-	echo "$src:"
-	dest_png="main-untexed/${src}"
-	dest_tex="${dest_png%png}tex"
-	(./img2tex untex "main/$src" 2> /dev/null || (echo "$src failed"; continue)) | tail -n 1 > "$dest_tex"
-	./img2tex tex untexed.png < "$dest_tex" &> /dev/null || (echo "$1"; exit 1)
-	./make_comparison_img "main/$src" untexed.png "${dest_png}"
-	cat "$dest_tex"
+for arg in "$@"; do
+	for src in $(ls main | grep "^$arg.png$"); do
+		echo "$src:"
+		dest_png="main-untexed/${src}"
+		dest_tex="${dest_png%png}tex"
+		(./img2tex untex "main/$src" 2> /dev/null || (echo "$src failed"; continue)) | tail -n 1 > "$dest_tex"
+		./img2tex tex untexed.png < "$dest_tex" &> /dev/null || (echo "$src"; exit 1)
+		./make_comparison_img "main/$src" untexed.png "${dest_png}"
+		cat "$dest_tex"
+	done
 done

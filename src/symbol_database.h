@@ -237,7 +237,6 @@ private:
 		   "\\sim",
 		   "\\propto",
 		   "\\neq",
-		   "\\ne",
 		   "\\leq",
 		   "\\geq",
 		   "\\prec",
@@ -287,11 +286,9 @@ private:
 		   "\\triangleright",
 		   "\\odot",
 		   "\\star",
-		   "\\vee",
 		   "\\bigcirc",
 		   "\\circ",
 		   "\\dagger",
-		   "\\wedge",
 		   "\\bullet",
 		   "\\setminus",
 		   "\\ddagger",
@@ -389,7 +386,7 @@ private:
 
 		for (auto const* vec : {&small_latin, &big_latin})
 			for (string const& letter : *vec)
-				job_queue.add_job("\\mathrm{" + letter + "}");
+				job_queue.add_job("\\textrm{" + letter + "}");
 
 		for (string const& d1 : digits)
 			for (string const& d2 : digits)

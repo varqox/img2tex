@@ -53,6 +53,7 @@ inline std::vector<int> column_sum(const Matrix<int>& mat) {
 
 struct SplitSymbol {
 	Matrix<int> img;
+	int first_column_pos;
 	int top_rows_cut;
 	int bottom_rows_cut;
 };
@@ -83,6 +84,7 @@ split_into_symbol_groups(const Matrix<int>& mat) {
 				auto res = without_empty_borders(SubmatrixView(
 				   mat, 0, symbols_beg[k], mat.rows(), i - symbols_beg[k]));
 				symbol_groups[k].push_back({res.symbol.to_matrix(),
+				                            symbols_beg[k],
 				                            res.top_rows_cut,
 				                            res.bottom_rows_cut});
 				symbols_beg[k] = symbols_beg[k - 1];
@@ -91,14 +93,18 @@ split_into_symbol_groups(const Matrix<int>& mat) {
 
 		auto res = without_empty_borders(SubmatrixView(
 		   mat, 0, symbols_beg[0], mat.rows(), i - symbols_beg[0]));
-		symbol_groups[0].push_back(
-		   {res.symbol.to_matrix(), res.top_rows_cut, res.bottom_rows_cut});
+		symbol_groups[0].push_back({res.symbol.to_matrix(),
+		                            symbols_beg[0],
+		                            res.top_rows_cut,
+		                            res.bottom_rows_cut});
 
 		symbols_beg[0] = i + 1;
 	}
 
 	return symbol_groups;
 }
+
+int symbol_horizontal_distance(const SplitSymbol& fir, const SplitSymbol& sec);
 
 // Returns path of the png_file
 std::string tex_to_png_file(const std::string& tex, bool quiet = true);

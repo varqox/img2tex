@@ -7,6 +7,7 @@
 
 using std::max;
 using std::min;
+using std::optional;
 using std::string;
 
 WithoutBordersRes without_empty_borders(const SubmatrixView<int>& mat) {
@@ -37,6 +38,48 @@ WithoutBordersRes without_empty_borders(const SubmatrixView<int>& mat) {
 	      mat, min_row, min_col, max_row - min_row + 1, max_col - min_col + 1),
 	   min_row,
 	   rows - 1 - max_row};
+}
+
+int symbol_horizontal_distance(const SplitSymbol& fir, const SplitSymbol& sec) {
+	int beg_row = std::max(fir.top_rows_cut, sec.top_rows_cut);
+	int end_row = std::min(fir.top_rows_cut + fir.img.rows(),
+	                       sec.top_rows_cut + sec.img.rows());
+
+	optional<int> distance;
+	for (int r = beg_row; r < end_row; ++r) {
+		int fir_row = r - fir.top_rows_cut;
+		int sec_row = r - sec.top_rows_cut;
+
+		optional<int> fir_last_filled_col;
+		for (int c = fir.img.cols() - 1; c >= 0; --c) {
+			if (fir.img[fir_row][c]) {
+				fir_last_filled_col = c;
+				break;
+			}
+		}
+
+		optional<int> sec_first_filled_col;
+		for (int c = 0; c < sec.img.cols(); ++c) {
+			if (sec.img[sec_row][c]) {
+				sec_first_filled_col = c;
+				break;
+			}
+		}
+
+		if (not fir_last_filled_col or not sec_first_filled_col)
+			continue;
+
+		int curr_dist = (sec.first_column_pos + sec_first_filled_col.value()) -
+		                (fir.first_column_pos + fir_last_filled_col.value()) -
+		                1;
+		if (not distance or distance.value() > curr_dist)
+			distance = curr_dist;
+	}
+
+	if (not distance.has_value()) // No intersection
+		return sec.first_column_pos - fir.first_column_pos - fir.img.cols();
+
+	return distance.value();
 }
 
 // Returns path of the png_file
