@@ -171,7 +171,7 @@ private:
 					sym.symbol += extract_char();
 
 				bool ignore_blanks_inside =
-				   not is_one_of(sym.symbol, "\\textrm", "\\mathbf");
+				   not is_one_of(sym.symbol, "\\textrm", "\\mathbf", "\\texttt");
 
 				// Command arguments
 				while (peek_char() == '{') {
@@ -287,7 +287,7 @@ private:
 
 		auto remove_before = [](const Symbol& s) {
 			return (is_one_of(s.symbol, ",", ".", "'", "\"", "`") or
-			        has_prefix(s.symbol, ")") or has_prefix(s.symbol, "]"));
+			        has_one_of_prefixes(s.symbol, ")", "]", "!"));
 		};
 
 		auto remove_before_symbol_after_left_parenthesis =

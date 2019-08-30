@@ -384,9 +384,12 @@ private:
 			for (string const& symbol : *vec)
 				job_queue.add_job(symbol + "'");
 
-		for (auto const* vec : {&small_latin, &big_latin})
-			for (string const& letter : *vec)
+		for (auto const* vec : {&small_latin, &big_latin}) {
+			for (string const& letter : *vec) {
 				job_queue.add_job("\\textrm{" + letter + "}");
+				job_queue.add_job("\\texttt{" + letter + "}");
+			}
+		}
 
 		for (string const& d1 : digits)
 			for (string const& d2 : digits)

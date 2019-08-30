@@ -395,31 +395,39 @@ private:
 			                  l_sym.orig_symbol.first_column_pos -
 			                  l_sym.orig_symbol.img.cols();
 
-			bool is_l_bsc_mathbf = is_basic_mathbf(l_sym.matched_symbol_tex);
-			bool is_r_bsc_mathbf = is_basic_mathbf(r_sym.matched_symbol_tex);
+			bool is_l_text = false;
+			bool is_r_text = false;
 
-			bool is_l_bsc_textrm = is_basic_textrm(l_sym.matched_symbol_tex);
-			bool is_r_bsc_textrm = is_basic_textrm(r_sym.matched_symbol_tex);
+			constexpr array commands = {"\\mathbf", "\\textrm", "\\texttt"};
+			constexpr array spacing_signs = {"~", " ", " "};
+			static_assert(commands.size() == spacing_signs.size());
 
-			if (spacing > 5 and is_l_bsc_mathbf and is_r_bsc_mathbf) {
-				l_sym.matched_symbol_tex += " \\mathbf{~}";
-				continue;
+			bool added_spacing = false;
+			for (size_t cmd_idx = 0; cmd_idx < commands.size(); ++cmd_idx) {
+				auto command = commands[cmd_idx];
+				auto spacing_sign = spacing_signs[cmd_idx];
+
+				bool is_l_bsc_command = is_basic_command(command, l_sym.matched_symbol_tex);
+				bool is_r_bsc_command = is_basic_command(command, r_sym.matched_symbol_tex);
+				if (spacing > 5 and is_l_bsc_command and is_r_bsc_command) {
+					l_sym.matched_symbol_tex.append(command).append("{").append(spacing_sign).append("}");
+					added_spacing = true;
+					break;
+				}
+
+				is_l_text |= is_l_bsc_command;
+				is_r_text |= is_r_bsc_command;
 			}
 
-			if (spacing > 5 and is_l_bsc_textrm and is_r_bsc_textrm) {
-				l_sym.matched_symbol_tex += " \\textrm{ }";
+			if (added_spacing)
 				continue;
-			}
 
-			bool is_l_text = (is_l_bsc_mathbf or is_l_bsc_textrm);
-			bool is_r_text = (is_r_bsc_mathbf or is_r_bsc_textrm);
 			bool l_ends_with_alnum =
 			   symbol_ends_with(l_sym.matched_symbol_tex, isalnum);
 			bool r_begins_with_alnum =
 			   symbol_begins_with(r_sym.matched_symbol_tex, isalnum);
 
 			if ((is_one_of(l_sym.matched_symbol_tex, ")", "!") and is_r_text) or
-			    (is_l_text and r_sym.matched_symbol_tex == "(") or
 			    (l_ends_with_alnum and is_r_text) or
 			    (is_l_text and r_begins_with_alnum)) {
 				if (spacing > 15) {
@@ -427,7 +435,7 @@ private:
 					continue;
 				}
 
-				if (spacing > 5) {
+				if (spacing > 4) {
 					l_sym.matched_symbol_tex += " \\;";
 					continue;
 				}
@@ -448,10 +456,21 @@ private:
 				}
 			}
 
-			if (has_suffix(l_sym.matched_symbol_tex, ",") and
-			    ((r_begins_with_alnum and spacing > 10) or raw_spacing > 20)) {
-				l_sym.matched_symbol_tex += " \\quad";
+			if (has_suffix(l_sym.matched_symbol_tex, ",") and raw_spacing > 20) {
+				l_sym.matched_symbol_tex += "\\quad";
 				continue;
+			}
+
+			if (has_suffix(l_sym.matched_symbol_tex, ",") and (r_begins_with_alnum or r_sym.matched_symbol_tex == "\\ldots")) {
+				if (raw_spacing > 14) {
+					l_sym.matched_symbol_tex += " \\quad";
+					continue;
+				}
+
+				if (raw_spacing > 8) {
+					l_sym.matched_symbol_tex += " \\;";
+					continue;
+				}
 			}
 
 			if (has_suffix(l_sym.matched_symbol_tex, ":") or
@@ -474,6 +493,13 @@ private:
 				l_sym.matched_symbol_tex += " \\quad";
 				continue;
 			}
+
+			bool l_ends_with_digit = symbol_ends_with(l_sym.matched_symbol_tex, isdigit);
+			bool r_begins_with_digit = symbol_begins_with(r_sym.matched_symbol_tex, isdigit);
+			if (l_ends_with_alnum and r_begins_with_alnum and not (l_ends_with_digit and r_begins_with_digit) and spacing > 6) {
+				l_sym.matched_symbol_tex += " \\;";
+				continue;
+			}
 		}
 	}
 
@@ -490,7 +516,8 @@ private:
 		};
 
 		if (is_between(tex, "\\textrm{", "}", begins_with) or
-		    is_between(tex, "\\mathbf{", "}", begins_with)) {
+		    is_between(tex, "\\mathbf{", "}", begins_with) or
+		    is_between(tex, "\\texttt{", "}", begins_with)) {
 			return true;
 		}
 
@@ -511,6 +538,7 @@ private:
 
 		if (is_between(tex, "\\textrm{", "}", ends_with) or
 		    is_between(tex, "\\mathbf{", "}", ends_with) or
+		    is_between(tex, "\\texttt{", "}", ends_with) or
 		    is_between(tex, "{}_", "", ends_with) or
 		    is_between(tex, "{}_{", "}", ends_with) or
 		    is_between(tex, "{}^", "", ends_with) or
@@ -524,12 +552,8 @@ private:
 		return false;
 	}
 
-	static bool is_basic_textrm(string_view tex) {
-		return is_between(tex, "\\textrm{", "}", std::not_fn(contains_braces));
-	}
-
-	static bool is_basic_mathbf(string_view tex) {
-		return is_between(tex, "\\mathbf{", "}", std::not_fn(contains_braces));
+	static bool is_basic_command(string_view command, string_view tex) {
+		return is_between(tex, string(command) + "{", "}", std::not_fn(contains_braces));
 	}
 
 	static bool contains_braces(string_view str) {
