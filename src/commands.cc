@@ -166,3 +166,5 @@ int untex_command(int argc, char** argv) {
 }
 
 // TODO: add indexing symbols to make lookup fast for known symbols
+// TODO: adding spacing between digits may be undesirable when some literal is
+// shown...

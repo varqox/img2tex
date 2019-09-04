@@ -25,7 +25,7 @@ static string space_digits_into_3digit_groups(const string& tex) {
 		// Decide from where to start grouping: right or left
 		int pos_mod_to_add_space_before;
 		if (right_bound == '.' or left_bound != '.') {
-		 	pos_mod_to_add_space_before = end % 3; // right
+			pos_mod_to_add_space_before = end % 3; // right
 		} else if (end - beg < 5) {
 			res.append(tex, beg, end - beg); // none
 			return;
@@ -170,8 +170,8 @@ private:
 				while (isalpha(peek_char()))
 					sym.symbol += extract_char();
 
-				bool ignore_blanks_inside =
-				   not is_one_of(sym.symbol, "\\textrm", "\\mathbf", "\\texttt");
+				bool ignore_blanks_inside = not is_one_of(
+				   sym.symbol, "\\textrm", "\\mathbf", "\\texttt");
 
 				// Command arguments
 				while (peek_char() == '{') {
@@ -287,7 +287,7 @@ private:
 
 		auto remove_before = [](const Symbol& s) {
 			return (is_one_of(s.symbol, ",", ".", "'", "\"", "`") or
-			        has_one_of_prefixes(s.symbol, ")", "]", "!"));
+			        has_one_of_prefixes(s.symbol, ")", "]", "!", ";"));
 		};
 
 		auto remove_before_symbol_after_left_parenthesis =
@@ -299,11 +299,12 @@ private:
 			   return res;
 		   };
 
-		auto remove_before_func_left_parenthesis =
+		auto remove_left_parenthesis_or_quote_after_alnum =
 		   [last_symbol_is_alnum = false](const Symbol& s) mutable {
 			   bool is_alnum =
 			      all_of(s.symbol.begin(), s.symbol.end(), isalnum);
-			   bool res = (last_symbol_is_alnum and s.symbol == "(");
+			   bool res = (last_symbol_is_alnum and
+			               is_one_of(s.symbol, "(", "[", "\""));
 			   last_symbol_is_alnum = (is_alnum and not s.has_index());
 			   return res;
 		   };
@@ -331,7 +332,7 @@ private:
 			    remove_between_colon_and_equation_mark(symbol) |
 			    remove_before(symbol) |
 			    remove_before_symbol_after_left_parenthesis(symbol) |
-			    remove_before_func_left_parenthesis(symbol) |
+			    remove_left_parenthesis_or_quote_after_alnum(symbol) |
 			    remove_before_digit_after_floating_point(symbol));
 			if (remove_last_space and not res.empty())
 				res.pop_back();

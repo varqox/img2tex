@@ -407,10 +407,15 @@ private:
 				auto command = commands[cmd_idx];
 				auto spacing_sign = spacing_signs[cmd_idx];
 
-				bool is_l_bsc_command = is_basic_command(command, l_sym.matched_symbol_tex);
-				bool is_r_bsc_command = is_basic_command(command, r_sym.matched_symbol_tex);
+				bool is_l_bsc_command =
+				   is_basic_command(command, l_sym.matched_symbol_tex);
+				bool is_r_bsc_command =
+				   is_basic_command(command, r_sym.matched_symbol_tex);
 				if (spacing > 5 and is_l_bsc_command and is_r_bsc_command) {
-					l_sym.matched_symbol_tex.append(command).append("{").append(spacing_sign).append("}");
+					l_sym.matched_symbol_tex.append(command)
+					   .append("{")
+					   .append(spacing_sign)
+					   .append("}");
 					added_spacing = true;
 					break;
 				}
@@ -456,12 +461,15 @@ private:
 				}
 			}
 
-			if (has_suffix(l_sym.matched_symbol_tex, ",") and raw_spacing > 20) {
+			if (has_suffix(l_sym.matched_symbol_tex, ",") and
+			    raw_spacing > 20) {
 				l_sym.matched_symbol_tex += "\\quad";
 				continue;
 			}
 
-			if (has_suffix(l_sym.matched_symbol_tex, ",") and (r_begins_with_alnum or r_sym.matched_symbol_tex == "\\ldots")) {
+			if (has_suffix(l_sym.matched_symbol_tex, ",") and
+			    (r_begins_with_alnum or
+			     r_sym.matched_symbol_tex == "\\ldots")) {
 				if (raw_spacing > 14) {
 					l_sym.matched_symbol_tex += " \\quad";
 					continue;
@@ -494,9 +502,13 @@ private:
 				continue;
 			}
 
-			bool l_ends_with_digit = symbol_ends_with(l_sym.matched_symbol_tex, isdigit);
-			bool r_begins_with_digit = symbol_begins_with(r_sym.matched_symbol_tex, isdigit);
-			if (l_ends_with_alnum and r_begins_with_alnum and not (l_ends_with_digit and r_begins_with_digit) and spacing > 6) {
+			bool l_ends_with_digit =
+			   symbol_ends_with(l_sym.matched_symbol_tex, isdigit);
+			bool r_begins_with_digit =
+			   symbol_begins_with(r_sym.matched_symbol_tex, isdigit);
+			if (l_ends_with_alnum and r_begins_with_alnum and
+			    not(l_ends_with_digit and r_begins_with_digit) and
+			    spacing > 6) {
 				l_sym.matched_symbol_tex += " \\;";
 				continue;
 			}
@@ -553,7 +565,8 @@ private:
 	}
 
 	static bool is_basic_command(string_view command, string_view tex) {
-		return is_between(tex, string(command) + "{", "}", std::not_fn(contains_braces));
+		return is_between(
+		   tex, string(command) + "{", "}", std::not_fn(contains_braces));
 	}
 
 	static bool contains_braces(string_view str) {
