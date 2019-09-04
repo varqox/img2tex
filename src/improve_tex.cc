@@ -286,7 +286,7 @@ private:
 		   };
 
 		auto remove_before = [](const Symbol& s) {
-			return (is_one_of(s.symbol, ",", ".", "'", "\"", "`") or
+			return (is_one_of(s.symbol, ",", ".", "'", "`") or
 			        has_one_of_prefixes(s.symbol, ")", "]", "!", ";"));
 		};
 
@@ -299,15 +299,31 @@ private:
 			   return res;
 		   };
 
-		auto remove_left_parenthesis_or_quote_after_alnum =
+		auto remove_before_quotation_mark_after_alnum =
 		   [last_symbol_is_alnum = false](const Symbol& s) mutable {
-			   bool is_alnum =
+			   bool res = (last_symbol_is_alnum and s.symbol == "\"");
+			   last_symbol_is_alnum =
 			      all_of(s.symbol.begin(), s.symbol.end(), isalnum);
-			   bool res = (last_symbol_is_alnum and
-			               is_one_of(s.symbol, "(", "[", "\""));
-			   last_symbol_is_alnum = (is_alnum and not s.has_index());
 			   return res;
 		   };
+
+		auto remove_before_alnum_after_quotation_mark =
+		   [last_symbol_is_quotation_mark = false](const Symbol& s) mutable {
+			   bool is_alnum =
+			      all_of(s.symbol.begin(), s.symbol.end(), isalnum);
+			   bool res = (last_symbol_is_quotation_mark and is_alnum);
+			   last_symbol_is_quotation_mark = (s.symbol == "\"");
+			   return res;
+		   };
+
+		auto remove_left_parenthesis_after_alnum = [last_symbol_is_alnum =
+		                                               false](
+		                                              const Symbol& s) mutable {
+			bool is_alnum = all_of(s.symbol.begin(), s.symbol.end(), isalnum);
+			bool res = (last_symbol_is_alnum and is_one_of(s.symbol, "(", "["));
+			last_symbol_is_alnum = (is_alnum and not s.has_index());
+			return res;
+		};
 
 		auto remove_before_digit_after_floating_point =
 		   [seq_digit = false,
@@ -331,8 +347,10 @@ private:
 			   (remove_between_alnum(symbol) |
 			    remove_between_colon_and_equation_mark(symbol) |
 			    remove_before(symbol) |
+			    remove_before_quotation_mark_after_alnum(symbol) |
+			    remove_before_alnum_after_quotation_mark(symbol) |
 			    remove_before_symbol_after_left_parenthesis(symbol) |
-			    remove_left_parenthesis_or_quote_after_alnum(symbol) |
+			    remove_left_parenthesis_after_alnum(symbol) |
 			    remove_before_digit_after_floating_point(symbol));
 			if (remove_last_space and not res.empty())
 				res.pop_back();
