@@ -14,25 +14,25 @@ using std::vector;
 static string space_digits_into_3digit_groups(const string& tex) {
 	string res;
 	auto parse = [&](size_t beg, size_t end) {
-		if (end - beg < 4) {
-			res.append(tex, beg, end - beg);
-			return;
-		}
+		auto no_spacing = [&] { res.append(tex, beg, end - beg); };
+		if (end - beg < 5)
+			return no_spacing();
 
 		char left_bound = (beg == 0 ? ' ' : tex[beg - 1]);
 		char right_bound = (end == tex.size() ? ' ' : tex[end]);
 
-		// Decide from where to start grouping: right or left
-		int pos_mod_to_add_space_before;
-		if (right_bound == '.' or left_bound != '.') {
-			pos_mod_to_add_space_before = end % 3; // right
-		} else if (end - beg < 5) {
-			res.append(tex, beg, end - beg); // none
-			return;
-		} else {
-			pos_mod_to_add_space_before = beg % 3; // left
+		// Do not space after floating point
+		if (left_bound == '.')
+			return no_spacing();
+
+		// Number representing digit sequence should not be spaced
+		if (tex[beg] == '0' or left_bound == '"' or
+		    is_one_of(right_bound, '"', '_')) {
+			return no_spacing();
 		}
 
+		// Start grouping from the right
+		int pos_mod_to_add_space_before = end % 3;
 		res += tex[beg];
 		while (++beg < end) {
 			if (beg % 3 == pos_mod_to_add_space_before)
