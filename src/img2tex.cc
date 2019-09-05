@@ -18,7 +18,8 @@ int main2(int argc, char** argv) {
                          input.
   tex <out_png_file>   Reads tex formula from input and writes PNG image
                          compiled from this formula to the out_png_file.
-  untex <png_file>     Tries to convert png_file to the source tex formula and
+  untex <png_file> [--save-candidates]
+                       Tries to convert png_file to the source tex formula and
                          print the result to the output, otherwise exits with
                          code 1.
 )=";

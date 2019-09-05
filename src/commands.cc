@@ -118,6 +118,12 @@ int tex_command(int argc, char** argv) {
 }
 
 int untex_command(int argc, char** argv) {
+	bool save_candidates = false;
+	if (argc == 2 and strcmp(argv[1], "--save-candidates") == 0) {
+		--argc;
+		save_candidates = true;
+	}
+
 	if (argc != 1) {
 		cerr << "untex command needs an argument\n";
 		return 1;
@@ -149,14 +155,16 @@ int untex_command(int argc, char** argv) {
 		      cout << tex << '\n';
 		      return 0;
 	      },
-	      [](UntexFailure failure) {
+	      [&](UntexFailure failure) {
 		      cerr << "\033[1;31mCannot match any of the candidates:\033[m\n";
 		      int next_candidate_no = 0;
 		      for (auto& candidate : failure.unmatched_symbol_candidates) {
-			      auto fsym_file = failed_symbol_file(next_candidate_no++);
-			      ofstream(fsym_file)
-			         << SymbolDatabase::symbol_to_text_img(candidate.img);
-			      cerr << "Candidate saved to file " << fsym_file << ":\n";
+			      if (save_candidates) {
+				      auto fsym_file = failed_symbol_file(next_candidate_no++);
+				      ofstream(fsym_file)
+				         << SymbolDatabase::symbol_to_text_img(candidate.img);
+				      cerr << "Candidate saved to file " << fsym_file << ":\n";
+			      }
 			      binshow_matrix(candidate.img);
 		      }
 
