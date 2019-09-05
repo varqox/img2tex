@@ -299,6 +299,14 @@ private:
 			   return res;
 		   };
 
+		auto remove_between_quotation_mark =
+		   [last_symbol_is_quotation_mark = false](const Symbol& s) mutable {
+			   bool is_quotation_mark = (s.symbol == "\"");
+			   bool res = (last_symbol_is_quotation_mark and is_quotation_mark);
+			   last_symbol_is_quotation_mark = is_quotation_mark;
+			   return res;
+		   };
+
 		auto remove_before_quotation_mark_after_alnum =
 		   [last_symbol_is_alnum = false](const Symbol& s) mutable {
 			   bool res = (last_symbol_is_alnum and s.symbol == "\"");
@@ -346,7 +354,7 @@ private:
 			bool remove_last_space =
 			   (remove_between_alnum(symbol) |
 			    remove_between_colon_and_equation_mark(symbol) |
-			    remove_before(symbol) |
+			    remove_before(symbol) | remove_between_quotation_mark(symbol) |
 			    remove_before_quotation_mark_after_alnum(symbol) |
 			    remove_before_alnum_after_quotation_mark(symbol) |
 			    remove_before_symbol_after_left_parenthesis(symbol) |
