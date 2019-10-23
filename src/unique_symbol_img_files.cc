@@ -10,7 +10,7 @@ using std::string;
 using std::to_string;
 
 template <class Func, class ErrFunc>
-void for_each_dir_component(DIR* dir, Func&& func, ErrFunc&& readdir_failed) {
+static void for_each_dir_component(DIR* dir, Func&& func, ErrFunc&& readdir_failed) {
 	dirent* file;
 	for (;;) {
 		errno = 0;
@@ -28,8 +28,10 @@ void for_each_dir_component(DIR* dir, Func&& func, ErrFunc&& readdir_failed) {
 	}
 }
 
-void unique_files_from_full_main_to_main(const string& src_dir,
+static void unique_files_from_full_main_to_main(string src_dir,
                                          string dest_dir) {
+	if (not src_dir.empty() and src_dir.back() != '/')
+		src_dir += '/';
 	if (not dest_dir.empty() and dest_dir.back() != '/')
 		dest_dir += '/';
 
@@ -43,7 +45,7 @@ void unique_files_from_full_main_to_main(const string& src_dir,
 	for_each_dir_component(
 	   opendir(src_dir.c_str()),
 	   [&](dirent* file) {
-		   string path = dest_dir + file->d_name;
+		   string path = src_dir + file->d_name;
 
 		   auto img = teximg_to_matrix(path.data());
 		   auto& mapped = images[img];
@@ -55,13 +57,13 @@ void unique_files_from_full_main_to_main(const string& src_dir,
 	cerr << images.size() << endl;
 
 	namespace fs = std::filesystem;
-	fs::remove_all("main/");
-	(void)fs::create_directory("main");
+	fs::remove_all(dest_dir);
+	(void)fs::create_directory(dest_dir);
 	int i = 0;
 	for (auto const& [symbol, path_str] : images) {
 		fs::path path = path_str;
 		if (not fs::copy_file(
-		       path, fs::path("main/") += to_string(++i) += path.extension())) {
+		       path, fs::path(dest_dir) += to_string(++i) += path.extension())) {
 			throw std::runtime_error("file copy failed");
 		}
 	}
