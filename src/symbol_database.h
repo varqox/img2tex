@@ -293,7 +293,6 @@ private:
 		   "\\setminus",
 		   "\\ddagger",
 		   "\\wr",
-		   "\\amalg",
 		   "\\exists",
 		   "\\not\\exists",
 		   "\\forall",

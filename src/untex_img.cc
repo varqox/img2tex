@@ -21,8 +21,8 @@ namespace {
 constexpr bool debug = false;
 
 class ImgUntexer {
-	static constexpr int SYMBOL_GROUPS_NO = 7;
-	static constexpr double MATCH_THRESHOLD = 1.5;
+	static constexpr int SYMBOL_GROUPS_NO = 12;
+	static constexpr double MATCH_THRESHOLD = 1.4;
 	static constexpr int SIZE_DIFF_THRESHOLD = 4;
 
 	struct MatchedSymbol {
