@@ -1,11 +1,22 @@
 #!/bin/bash
-set -e
 
-SOURCE="main/$1.png"
+# Usage: test_on <path to dir with images> <images filenames...>
 
-echo "$1:"
-./img2tex untex $SOURCE | tail -n 1 > untexed.tex
-./img2tex tex untexed.png < untexed.tex || (echo "$1"; cp $SOURCE comparison.png; exit 1)
-./make_comparison_img $SOURCE untexed.png comparison.png
-echo "$1:"
-cat untexed.tex
+PREFIX="$1"
+for i in "${@:2}"; do
+	res=1
+	while [ "$res" -ne "0" ]; do
+		echo "$i"
+		SOURCE="$PREFIX/$i"
+		untex_output=$(./img2tex untex "$SOURCE" --save-candidates)
+		res=$?
+		tail -n 1 > untexed.tex <<< "$untex_output"
+		./img2tex tex untexed.png < untexed.tex || (echo "$1"; cp "$SOURCE" comparison.png; exit 1)
+		./make_comparison_img "$SOURCE" untexed.png comparison.png
+		echo "$i:"
+		cat untexed.tex
+
+		read newline
+		[ "$newline" == "skip" ] && break
+	done
+done
